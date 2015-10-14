@@ -1,4 +1,14 @@
 #!/usr/bin/env python
+
+###################################################################
+#  cpuinfo - Get information about CPU
+#
+#      License: BSD
+#      Author:  Pearu Peterson <pearu@cens.ioc.ee>
+#
+#  See "LICENSE" file for details about copyright and rights to use.
+####################################################################
+
 """
 cpuinfo
 
