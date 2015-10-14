@@ -62,7 +62,7 @@ def decode_node_id(node_id, ra):
 
     Logic from PSI -- iddecode
     """
-    # Padd out address to 16 bytes
+    # Pad out address to 16 bytes
     nid = '0' * (16 - len(node_id)) + node_id
 
     # Get IP address --- the first 4 bytes
