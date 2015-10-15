@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, time, atexit, pwd
+import sys, os, time, atexit, pwd, grp
 from signal import SIGTERM 
 
 class Daemon:
@@ -9,14 +9,15 @@ class Daemon:
     
     Usage: subclass the Daemon class and override the run() method
     """
-    def __init__(self, name, pidfile, user, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+    def __init__(self, name, pidfile, user, group, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
         self.pidfile = pidfile
         self.name = name
         self.user = user
-    
+        self.group = group
+
     def daemonize(self):
         """
         do the UNIX double-fork magic, see W. Richard Stevens'
@@ -31,12 +32,12 @@ class Daemon:
         except OSError, e: 
             sys.stderr.write("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
             sys.exit(1)
-    
+
         # decouple from parent environment
         os.chdir("/") 
         os.setsid() 
         os.umask(0) 
-    
+
         # do second fork
         try: 
             pid = os.fork() 
@@ -46,7 +47,7 @@ class Daemon:
         except OSError, e: 
             sys.stderr.write("fork #2 failed: %d (%s)\n" % (e.errno, e.strerror))
             sys.exit(1) 
-    
+
         # redirect standard file descriptors
         sys.stdout.flush()
         sys.stderr.flush()
@@ -56,23 +57,32 @@ class Daemon:
         os.dup2(si.fileno(), sys.stdin.fileno())
         os.dup2(so.fileno(), sys.stdout.fileno())
         os.dup2(se.fileno(), sys.stderr.fileno())
-    
+
         # write pidfile
         atexit.register(self.delpid)
         pid = str(os.getpid())
-        file(self.pidfile,'w+').write("%s\n" % pid)
+        file(self.pidfile, 'w+').write("%s\n" % pid)
         self.demote()
 
     def demote(self):
-        # demote root user to specified user
+        # demote root user to any specified user or group
         try:
             if os.getuid() == 0:
-                aero_pw = pwd.getpwnam(self.user)
-                os.setgid(aero_pw.pw_gid)
-                os.setuid(aero_pw.pw_uid)
+                # drop supplementary groups
+                os.setgroups([])
+                if self.group:
+                    the_grp = grp.getgrnam(self.group)
+                    os.setgid(the_grp.gr_gid)
+                if self.user:
+                    the_pwd = pwd.getpwnam(self.user)
+                    os.setuid(the_pwd.pw_uid)
+            else:
+                if self.user or self.group:
+                    sys.stderr.write('Not privileged ~~ Cannot change to user [%s] / group [%s]\n' % (self.user, self.group))
+                    sys.exit(1)
         except Exception, ex:
             sys.exit(str(ex))
-    
+
     def delpid(self):
         os.remove(self.pidfile)
 
@@ -83,17 +93,17 @@ class Daemon:
         sys.stdout.write("* starting %s\n" % self.name)
         # Check for a pidfile to see if the daemon already runs
         try:
-            pf = file(self.pidfile,'r')
+            pf = file(self.pidfile, 'r')
             pid = int(pf.read().strip())
             pf.close()
         except IOError:
             pid = None
-    
+
         if pid:
             message = "  ...fail! %s is already running\n"
             sys.stderr.write(message % self.name)
             sys.exit(1)
-        
+
         # Start the daemon
         self.init()
         self.daemonize()
@@ -106,18 +116,18 @@ class Daemon:
         sys.stdout.write("* stopping %s\n" % self.name)
         # Get the pid from the pidfile
         try:
-            pf = file(self.pidfile,'r')
+            pf = file(self.pidfile, 'r')
             pid = int(pf.read().strip())
             pf.close()
         except IOError:
             pid = None
-    
+
         if not pid:
             message = "  ...fail! %s is not running.\n"
             sys.stderr.write(message % self.name)
             return # not an error in a restart
 
-        # Try killing the daemon process    
+        # Try killing the daemon process
         try:
             while 1:
                 os.kill(pid, SIGTERM)
@@ -139,6 +149,31 @@ class Daemon:
         """
         self.stop()
         self.start()
+
+    def try_restart(self):
+        """
+        Restart the daemon only if already running
+        """
+        if self.is_running():
+            self.restart()
+
+    def is_running(self):
+        """
+        Is the daemon running?
+        """
+        try:
+            with file(self.pidfile, 'r') as pf:
+                pid = int(pf.read().strip())
+        except IOError:
+            return false
+
+        try:
+            procfile = open("/proc/%d/status" % pid, 'r')
+            procfile.close()
+        except IOError, TypeError:
+            return false
+
+        return true
 
     def status(self):
         """

@@ -322,17 +322,15 @@ class LeafLine:
                   'system': platform.system(),
                   'release': platform.release()}
         system['CPU information'] = []
-        cpu.is_blaa()
-        cpu.is_Intel()
-        cpu.is_Alpha()
         for name in dir(cpuinfo):
-            if name[0]=='_' and name[1]!='_':
+            if name[0] == '_' and name[1] != '_':
                 r = getattr(cpu,name[1:])()
                 if r:
                     if r!=1:
                         system['CPU information'].append('%s=%s' %(name[1:],r))
                     else:
                         system['CPU information'].append(name[1:])
+        system['CPU information'].append(cpu.info)
         fields['system'] = system
 
         # Don't resend data if it likely hasn't changed.

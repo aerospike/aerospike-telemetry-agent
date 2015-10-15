@@ -31,7 +31,7 @@ class TelemetryAgent:
             if not self.options['disable']:
                 self.phonehome({ "agent-status": "CONNECTING TO ASD."})
             time.sleep(backoff)
-            backoff = min(backoff * 2, self.options['frequency'])
+            backoff = min(backoff * 2, self.options['interval'])
         logging.info("Connected to ASD.")
         if first_time:
             self.alert_asd_of_logging_status()
@@ -47,10 +47,11 @@ class TelemetryAgent:
             logging.info("Aerospike Telemetry Agent enabled. Collecting statistics.")
 
     def phonehome(self, infoMap):
-        # add version and node name into the param list
+        # add version, interval, and email address (if supplied) into the param list
         infoMap["telemetry-agent-version"] = version
-        infoMap["loglevel"] = self.options['loglevel']
-        infoMap["email"] = self.options['email']
+        infoMap["interval"] = self.options['interval']
+        if self.options['email']:
+            infoMap["email"] = self.options['email']
 
         blob = self.homeConnection.contact(infoMap)
         if blob == None:
@@ -89,4 +90,4 @@ class TelemetryAgent:
                     self.leafConnection = LeafLine(configParser.port, self.leafAddress)
                     self.wait_for_leaf_connection()
 
-            time.sleep(self.options['frequency'])
+            time.sleep(self.options['interval'])
