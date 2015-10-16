@@ -179,7 +179,7 @@ class LeafLine:
         return value
 
     def logMessage(self, message):
-        command = "log-message:message=%s;who=%s" % (message, "Telemetry Agent")
+        command = "log-message:message=%s;who=%s" % (message, "Aerospike Telemetry Agent")
         self.createInfoSocket()
         self.getInfo(command)
         self.closeSocket()

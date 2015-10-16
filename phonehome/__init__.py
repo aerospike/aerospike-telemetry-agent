@@ -10,7 +10,7 @@ import sys
 
 __version__ = "1.0.0"
 HOMEURLPATH = ":8192/telemetry/v1"
-LOGFILETEXT = "Aerospike Telemetry Agent:  Anonymous data collection is %s. For further information, see http://aerospike.com/aerospike-telemetry"
+LOGFILETEXT = "Aerospike anonymous data collection is %s. For further information, see http://aerospike.com/aerospike-telemetry"
 
 #--------------------------------------------------------------------------------
 # Imports
