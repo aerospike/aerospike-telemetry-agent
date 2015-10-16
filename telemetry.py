@@ -91,7 +91,11 @@ if __name__ == "__main__":
         sys.stderr.write("\nInvalid configuration file [%s] -- Error [%s]\n" % (config_filename, str(ex)))
         sys.exit(2)
 
-    if len(args) == 2:
+    if len(args) == 1:
+        # Run undaemonized for development purposes.
+        init(opts)
+        run(opts)
+    elif len(args) == 2:
         service_action = args[1]
 
         # Monkey patch init method

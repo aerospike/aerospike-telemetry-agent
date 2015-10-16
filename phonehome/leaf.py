@@ -229,7 +229,7 @@ class LeafLine:
             try:
                 fields['statistics']['paxos_principal'] = anonymize_data(fields['statistics']['paxos_principal'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymized data', str(e))
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
         # CONFIG
         statsStr = self.getInfo("get-config")
@@ -241,15 +241,15 @@ class LeafLine:
             try:
                 fields['config']['heartbeat-address'] = anonymize_data(fields['config']['heartbeat-address'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymized data', str(e))
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
             try:
                 fields['config']['mesh-seed-address-port'] = anonymize_ip(fields['config']['mesh-seed-address-port'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymized data', str(e))
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
             try:
                 fields['config']['mesh-address'] = anonymize_data(fields['config']['mesh-address'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymized data', str(e))
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
         # NODE
         statsStr = self.getInfo("node")
