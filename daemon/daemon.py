@@ -165,15 +165,15 @@ class Daemon:
             with file(self.pidfile, 'r') as pf:
                 pid = int(pf.read().strip())
         except IOError:
-            return false
+            return False
 
         try:
             procfile = open("/proc/%d/status" % pid, 'r')
             procfile.close()
         except IOError, TypeError:
-            return false
+            return False
 
-        return true
+        return True
 
     def status(self):
         """
