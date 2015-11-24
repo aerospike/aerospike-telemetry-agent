@@ -21,7 +21,7 @@ class RACK_AWARE_T:
 def anonymize_data(data):
     return str(hashlib.md5(data).hexdigest())
 
-def anonymize_ip(ip_port_pair):
+def anonymize_ip_port(ip_port_pair):
     """
     Takes a string of the form <ip address>:<port>
     Returns a string of the form <unique id>:<port>
@@ -72,7 +72,7 @@ def decode_node_id(node_id, ra):
         # Get MAC address
         MAC = nid[14:16]
         for i in xrange(12,3,-2):
-            MAC += ':' + nid[i:i+2]
+            MAC += ':' + nid[i:i+2].upper()
         return port + ':' + anonymize_data(MAC)
     elif ra > RACK_AWARE_T.NOT_RA: # RACK AWARE
         # Get group and node id
@@ -95,11 +95,14 @@ def semicolon_list_to_dict(semicolon_list):
     out = {}
     for metric_value in semicolon_list.split(";"):
         metric, value = metric_value.split("=")
-        out[metric] = value
+        if metric in out:
+            out[metric] += ';' + value
+        else:
+            out[metric] = value
     return out
 
 def check_statsStr(statsStr, stat):
-    if (statsStr == None or statsStr == -1):
+    if (statsStr == None or statsStr == -1 or statsStr == ""):
         logging.info("no stats for " + stat)
         return False
     return True
@@ -204,46 +207,40 @@ class LeafLine:
     def fetchInfoMain(self):
         fields = {} # name , value hash of current statistics
 
-        # SERVICE(S)
-        statsStr = self.getInfo("service")
-        if not check_statsStr(statsStr, "service"):
-            return None
-        else:
-            fields['service'] = ""
-            for ip_addr in statsStr.split(";"):
-                fields['service'] += anonymize_data(ip_addr)
-
-        statsStr = self.getInfo("services")
-        if check_statsStr(statsStr, "services"):
-            fields['services'] = ""
-            for ip_addr in statsStr.split(";"):
-                fields['services'] += anonymize_data(ip_addr)
-
-        # STATISTICS
-        statsStr = self.getInfo("statistics")
-        if not check_statsStr(statsStr, "statistics"):
-            return None
-        else:
-            fields['statistics'] = semicolon_list_to_dict(statsStr)
-            # Anon. certain fields.
-            try:
-                fields['statistics']['paxos_principal'] = anonymize_data(fields['statistics']['paxos_principal'])
-            except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
-
-        # CONFIG
+        # Config
         statsStr = self.getInfo("get-config")
-        if not check_statsStr(statsStr, "config"):
-            return None
-        else:
+        if check_statsStr(statsStr, "config"):
             fields['config'] = semicolon_list_to_dict(statsStr)
             # Anon. certain fields. Fields not guaranteed to exist.
+            try:
+                fields['config']['service-address'] = anonymize_data(fields['config']['service-address'])
+            except KeyError, e:
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+            try:
+                fields['config']['access-address'] = anonymize_data(fields['config']['access-address'])
+            except KeyError, e:
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+            try:
+                fields['config']['alternate-address'] = anonymize_data(fields['config']['alternate-address'])
+            except KeyError, e:
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
             try:
                 fields['config']['heartbeat-address'] = anonymize_data(fields['config']['heartbeat-address'])
             except KeyError, e:
                 logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
             try:
-                fields['config']['mesh-seed-address-port'] = anonymize_ip(fields['config']['mesh-seed-address-port'])
+                fields['config']['heartbeat-interface-address'] = anonymize_data(fields['config']['heartbeat-interface-address'])
+            except KeyError, e:
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+            try:
+                if fields['config']['mesh-seed-address-port']:
+                    statsStr = fields['config']['mesh-seed-address-port']
+                    result = ""
+                    for ip_port in statsStr.split(";"):
+                        if result:
+                            result += ";"
+                        result += anonymize_ip_port(ip_port)
+                    fields['config']['mesh-seed-address-port'] = result
             except KeyError, e:
                 logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
             try:
@@ -251,11 +248,9 @@ class LeafLine:
             except KeyError, e:
                 logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
-        # NODE
+        # Node
         statsStr = self.getInfo("node")
-        if not check_statsStr(statsStr, "node"):
-            return None
-        else:
+        if check_statsStr(statsStr, "node"):
             ra = RACK_AWARE_T.NOT_RA
             if fields['config']['paxos-protocol'] == 'v4': # Check if rack aware.
                 if fields['config']['mode'] == 'static':
@@ -267,11 +262,58 @@ class LeafLine:
             fields['node'] = decode_node_id(statsStr, ra)
             logging.info("Contacted local node: %s" % (fields['node']))
 
+        # Cluster
+        fields['succession-list'] = ""
+        statsStr = self.getInfo("get-sl:")
+        if check_statsStr(statsStr, "succession list"):
+            for node_id in statsStr.split(","):
+                if fields['succession-list']:
+                    fields['succession-list'] += ','
+                fields['succession-list'] += decode_node_id(node_id, ra)
+
+        # Service(s)
+        fields['service'] = ""
+        statsStr = self.getInfo("service")
+        if check_statsStr(statsStr, "service"):
+            fields['service'] = anonymize_ip_port(statsStr)
+
+        fields['services'] = ""
+        statsStr = self.getInfo("services")
+        if check_statsStr(statsStr, "services"):
+            for ip_port in statsStr.split(";"):
+                if fields['services']:
+                    fields['services'] += ';'
+                fields['services'] += anonymize_ip_port(ip_port)
+
+        fields['services-alternate'] = ""
+        statsStr = self.getInfo("services-alternate")
+        if check_statsStr(statsStr, "services-alternate"):
+            for ip_port in statsStr.split(";"):
+                if fields['services-alternate']:
+                    fields['services-alternate'] += ';'
+                fields['services-alternate'] += anonymize_ip_port(ip_port)
+
+        fields['services-alumni'] = ""
+        statsStr = self.getInfo("services-alumni")
+        if check_statsStr(statsStr, "services-alumni"):
+            for ip_port in statsStr.split(";"):
+                if fields['services-alumni']:
+                    fields['services-alumni'] += ';'
+                fields['services-alumni'] += anonymize_ip_port(ip_port)
+
+        # Statistics
+        statsStr = self.getInfo("statistics")
+        if check_statsStr(statsStr, "statistics"):
+            fields['statistics'] = semicolon_list_to_dict(statsStr)
+            # Anon. certain fields.
+            try:
+                fields['statistics']['paxos_principal'] = decode_node_id(fields['statistics']['paxos_principal'], ra)
+            except KeyError, e:
+                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+
         # Namespaces
         statsStr = self.getInfo("namespaces")
-        if not check_statsStr(statsStr, "namespaces"):
-            return None
-        else:
+        if check_statsStr(statsStr, "namespaces"):
             fields['namespaces'] = statsStr.split(";")
 
         # Storage
@@ -279,28 +321,22 @@ class LeafLine:
         if 'namespaces' in fields:
             for ns in fields['namespaces']:
                 statsStr = self.getInfo("namespace/" + ns)
-                if not check_statsStr(statsStr, "namespace " + ns):
-                    return None
-                else:
+                if check_statsStr(statsStr, "namespace " + ns):
                     storage[ns] = semicolon_list_to_dict(statsStr)
             fields['storage'] = storage
 
         # Queries
         queries = {}
         statsStr = self.getInfo("throughput:hist=query")
-        if not check_statsStr(statsStr, "throughput hist"):
-            return None
-        else:
+        if check_statsStr(statsStr, "throughput hist"):
             queries['throughput'] = statsStr
+
         statsStr = self.getInfo("latency:hist=query")
-        if not check_statsStr(statsStr, "latency hist"):
-            return None
-        else:
+        if check_statsStr(statsStr, "latency hist"):
             queries['sindex'] = statsStr
         statsStr = self.getInfo("sindex")
-        if not check_statsStr(statsStr, "sindexes"):
-            return None
-        else:
+
+        if check_statsStr(statsStr, "sindexes"):
             queries['sindex'] = statsStr
             sindexes = {}
             for si in statsStr.split(";")[:-1]: # For some reason, the returned string ends in ';', hence the -1
@@ -310,9 +346,7 @@ class LeafLine:
                     k, v = sif.split("=")
                     sifields[k] = v
                 statsStr = self.getInfo("sindex/" + sifields['ns'] + "/" + sifields['indexname'])
-                if not check_statsStr(statsStr, "sindex " + sifields['indexname']):
-                    return None
-                else:
+                if check_statsStr(statsStr, "sindex " + sifields['indexname']):
                     sindexes[sifields['indexname']] = semicolon_list_to_dict(statsStr)
             queries['sindexes'] = sindexes
         fields['queries'] = queries
