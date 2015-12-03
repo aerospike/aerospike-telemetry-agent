@@ -6,7 +6,7 @@ import logging
 
 from parser import Parser
 from home import HomeLine
-from leaf import LeafLine
+from leaf import LeafLine, anonymize_my_ip_addr
 from . import __version__ as version
 from . import HOMEURLPATH as homeUrlPath
 from . import LOGFILETEXT as logFileText
@@ -29,10 +29,14 @@ class TelemetryAgent:
         while not self.leafConnection.connectedToService():
             logging.info("Attempting to connect to ASD (backoff %d)." % backoff)
             if not self.options['disable']:
-                self.phonehome({ "agent-status": "CONNECTING TO ASD."})
+                logging.info("Sending back status: Connecting to ASD.")
+                self.phonehome({"telemetry-agent-status": "Connecting to ASD."})
             time.sleep(backoff)
             backoff = min(backoff * 2, self.options['interval'])
         logging.info("Connected to ASD.")
+        if not self.options['disable']:
+            logging.info("Sending back status: Connected to ASD.")
+            self.phonehome({"telemetry-agent-status": "Connected to ASD."})
         if first_time:
             self.alert_asd_of_logging_status()
 
@@ -52,6 +56,12 @@ class TelemetryAgent:
         infoMap["interval"] = self.options['interval']
         if self.options['email']:
             infoMap["email"] = self.options['email']
+
+        # Unix Epoch Time
+        infoMap['unix-epoch-time'] = int(time.time())
+
+        # Anonymized IP address of sender
+        infoMap['telemetry-agent-ip-address'] = anonymize_my_ip_addr()
 
         blob = self.homeConnection.contact(infoMap)
         if blob == None:
@@ -77,17 +87,20 @@ class TelemetryAgent:
             try:
                 infoMap = self.leafConnection.fetchInfo()
             except:
-                logging.exception("Unexpected error")
-            else:
-                if infoMap:
-                    self.phonehome(infoMap)
-                else:
-                    # Report ASD is down.
-                    logging.info("Failed contacting node.")
-                    self.phonehome({"error": "ASD is down"})
+                logging.warning("Cannot contact ASD.")
+                if logging.getLogger().isEnabledFor(logging.DEBUG):
+                    logging.exception("Unexpected error fetching info from ASD.")
+                infoMap = None
 
-                    # Attempt to reconnect.
-                    self.leafConnection = LeafLine(configParser.port, self.leafAddress)
-                    self.wait_for_leaf_connection()
+            if infoMap:
+                self.phonehome(infoMap)
+            else:
+                # Report ASD is down.
+                logging.info("Sending back status: ASD is down.")
+                self.phonehome({"telemetry-agent-status": "ASD is down."})
+
+                # Attempt to reconnect.
+                self.leafConnection = LeafLine(configParser.port, self.leafAddress)
+                self.wait_for_leaf_connection()
 
             time.sleep(self.options['interval'])

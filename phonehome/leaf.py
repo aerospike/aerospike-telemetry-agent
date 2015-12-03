@@ -21,6 +21,23 @@ class RACK_AWARE_T:
 def anonymize_data(data):
     return str(hashlib.md5(data).hexdigest())
 
+def my_ip_addr():
+    """
+    Return the default IP address used for Internet connections, falling back to localhost address upon error.
+    """
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 0)) # connecting to a UDP address doesn't send any packets
+        ip_addr = s.getsockname()[0]
+    except:
+        ip_addr = "127.0.0.1"
+    finally:
+        s.close()
+    return ip_addr
+
+def anonymize_my_ip_addr():
+    return anonymize_data(my_ip_addr())
+
 def anonymize_ip_port(ip_port_pair):
     """
     Takes a string of the form <ip address>:<port>
@@ -32,7 +49,8 @@ def anonymize_ip_port(ip_port_pair):
         try:
             ip, port = ip_port_pair.split(":")
         except:
-            logging.exception("Problem parsing ip/port pair.")
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.exception("Problem parsing ip/port pair.")
         else:
             return anonymize_data(ip) + ":" + str(port)
 
@@ -103,7 +121,7 @@ def semicolon_list_to_dict(semicolon_list):
 
 def check_statsStr(statsStr, stat):
     if (statsStr == None or statsStr == -1 or statsStr == ""):
-        logging.info("no stats for " + stat)
+        logging.debug("no stats for " + stat)
         return False
     return True
 
@@ -139,7 +157,8 @@ class LeafLine:
             logging.debug("About to connect to info socket.")
             self.info_socket.connect((self.host, int(self.port) ))
         except Exception:
-            logging.exception("Exception connecting to socket.")
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.exception("Exception connecting to socket.")
 
     def closeSocket(self):
         logging.debug("Closing info socket.")
@@ -166,7 +185,8 @@ class LeafLine:
             else:
                 rsp_data = None
         except Exception:
-            logging.exception("Exception with info request.")
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.exception("Exception with info request.")
             return -1
 
         if rsp_data == -1 or rsp_data is None:

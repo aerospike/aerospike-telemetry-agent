@@ -51,7 +51,7 @@ if __name__ == "__main__":
             config.set('logging', 'logfile', options.logfile)
             edit_config = True
         if options.interval:
-            config.set('main', 'interval', options.interval)
+            config.set('main', 'interval', str(options.interval))
             edit_config = True
         if options.email:
             config.set('main', 'email', options.email)
