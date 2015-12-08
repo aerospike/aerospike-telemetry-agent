@@ -98,7 +98,7 @@ def decode_node_id(node_id, ra):
         node_id = int(nid[8:17], 16)
         if ra == RACK_AWARE_T.STATIC:
             node_ip_str = decode_ip_addr(node_id)
-            return port + ':' + anonymize_data(node_ip_str)
+            return port + ':' + anonymize_data(group_id) + ':' + anonymize_data(node_ip_str)
         elif ra == RACK_AWARE_T.DYNAMIC:
             return port + ':' + anonymize_data(group_id) + ':' + anonymize_data(node_id)
 
