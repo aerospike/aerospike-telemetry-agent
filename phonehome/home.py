@@ -1,14 +1,27 @@
-import logging
 import httplib
-import urllib2
 import json
+import logging
 import pprint
+import ssl
+import urllib2
 
 class HomeLine:
-	def __init__(self, url):
+	def __init__(self, url, proxy, cafile):
 		self.url = url
+		self.proxy = proxy
+		if proxy:
+			logging.info("Using HTTPS proxy: " + proxy)
+			proxy_handler = urllib2.ProxyHandler({'https': proxy})
+			opener = urllib2.build_opener(proxy_handler)
+			urllib2.install_opener(opener)
+		self.kwargs = {}
+		if cafile and hasattr(ssl, "create_default_context"):
+			logging.info("Using CA file: " + cafile)
+			ctx = ssl.create_default_context()
+			ctx.load_verify_locations(cafile = cafile)
+			self.kwargs['context'] = ctx
 
-	# given an infoStr returned by the local node, call up the HOME server
+	# given an infoMap returned by the local node, call up the home server
 	def contact(self, infoMap):
 		logging.debug("HomeLine.contact: infoMap = %s", pprint.pformat(infoMap, indent=2))
 
@@ -28,7 +41,7 @@ class HomeLine:
 		resp = None
 
 		try:
-			resp = urllib2.urlopen(req, json.dumps(requestParams))
+			resp = urllib2.urlopen(req, json.dumps(requestParams), **self.kwargs)
 			resp = resp.read()
 		except urllib2.HTTPError, e:
 			logging.error("HTTPError: %s", str(e.code))
@@ -40,4 +53,3 @@ class HomeLine:
 			logging.exception("Unexpected error")
 
 		return resp
-

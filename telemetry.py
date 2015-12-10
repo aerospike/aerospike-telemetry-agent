@@ -10,12 +10,16 @@ if __name__ == "__main__":
     usage = "Usage: %s [options] <ConfigFile> [<Service Action for Daemon Mode: (start|stop|status|restart|try-restart)>]" % __file__
     usage_nl = usage + "\n"
     optparser = OptionParser(usage=usage, add_help_option=True)
-    optparser.add_option("--set-email", dest="email", type="string", metavar="<EMAIL>", help="Set email address.")
-    optparser.add_option("--set-loglevel", dest="loglevel", type="string", metavar="<LOGLEVEL>", help="Set log level.")
-    optparser.add_option("--set-logfile", dest="logfile", type="string", metavar="<LOGFILE>", help="Set log file.")
-    optparser.add_option("--set-interval", dest="interval", type="int", metavar="<INTERVAL>", help="Set data collection and reporting interval.")
     optparser.add_option("--disable", dest="disable", action="store_true", default=False, help="Disable Telemetry Agent. (Requires agent restart to take effect.)")
     optparser.add_option("--enable", dest="enable", action="store_true", default=False, help="Enable Telemetry Agent. (Requires agent restart to take effect.)")
+    optparser.add_option("--set-cafile", dest="cafile", type="string", metavar="<CAFILE>", help="Set certificate authority file.")
+    optparser.add_option("--set-email", dest="email", type="string", metavar="<EMAIL>", help="Set email address.")
+    optparser.add_option("--set-group", dest="group", type="string", metavar="<GROUP>", help="Set daemon group.")
+    optparser.add_option("--set-interval", dest="interval", type="int", metavar="<INTERVAL>", help="Set data collection and reporting interval.")
+    optparser.add_option("--set-logfile", dest="logfile", type="string", metavar="<LOGFILE>", help="Set log file.")
+    optparser.add_option("--set-loglevel", dest="loglevel", type="string", metavar="<LOGLEVEL>", help="Set log level.")
+    optparser.add_option("--set-proxy", dest="proxy", type="string", metavar="<PROXY>", help="Set HTTPS proxy.")
+    optparser.add_option("--set-user", dest="user", type="string", metavar="<USER>", help="Set daemon user.")
     (options, args) = optparser.parse_args()
 
     # Args.
@@ -26,7 +30,8 @@ if __name__ == "__main__":
     config_filename = args[0]
 
     # Read configuration file.
-    config = ConfigParser.SafeConfigParser()
+    defaults = {'cafile': None, 'email': None, 'group': None, 'proxy': None, 'user': None}
+    config = ConfigParser.SafeConfigParser(defaults = defaults)
     try:
         with open(config_filename, 'r') as config_fd:
             config.readfp(config_fd)
@@ -44,17 +49,29 @@ if __name__ == "__main__":
         if options.enable:
             config.set('main', 'disable', 'false')
             edit_config = True
-        if options.loglevel:
-            config.set('logging', 'loglevel', options.loglevel)
+        if options.cafile:
+            config.set('main', 'cafile', options.cafile)
             edit_config = True
-        if options.logfile:
-            config.set('logging', 'logfile', options.logfile)
+        if options.email:
+            config.set('main', 'email', options.email)
+            edit_config = True
+        if options.group:
+            config.set('main', 'group', options.group)
             edit_config = True
         if options.interval:
             config.set('main', 'interval', str(options.interval))
             edit_config = True
-        if options.email:
-            config.set('main', 'email', options.email)
+        if options.logfile:
+            config.set('logging', 'logfile', options.logfile)
+            edit_config = True
+        if options.loglevel:
+            config.set('logging', 'loglevel', options.loglevel)
+            edit_config = True
+        if options.proxy:
+            config.set('main', 'proxy', options.proxy)
+            edit_config = True
+        if options.user:
+            config.set('main', 'user', options.user)
             edit_config = True
         if edit_config:
             with open(args[0], 'wb') as cf:
@@ -68,16 +85,20 @@ if __name__ == "__main__":
 
     # Get options
     try:
-        opts = {'home-url': config.get('main', 'home-url'),
-                'interval': config.getfloat('main', 'interval'),
-                'email': config.get('main', 'email'),
-                'disable': config.getboolean('main','disable'),
-                'logfile': config.get('logging', 'logfile'),
-                'loglevel': config.get('logging', 'loglevel'),
-                'config-file': config.get('asd', 'config-file')}
-        user = config.get('main', 'user')
-        group = config.get('main', 'group')
-
+        opts = {
+            # Required options:
+            'home-url': config.get('main', 'home-url'),
+            'interval': config.getfloat('main', 'interval'),
+            'disable': config.getboolean('main','disable'),
+            'logfile': config.get('logging', 'logfile'),
+            'loglevel': config.get('logging', 'loglevel'),
+            'config-file': config.get('asd', 'config-file'),
+            # Optional options:
+            'cafile': config.get('main', 'cafile'),
+            'email': config.get('main', 'email'),
+            'group': config.get('main', 'group'),
+            'proxy': config.get('main', 'proxy'),
+            'user': config.get('main', 'user')}
     except ConfigParser.NoOptionError, ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nInvalid configuration file [%s] -- Option not found [%s]\n" % (config_filename, str(ex)))
@@ -109,7 +130,7 @@ if __name__ == "__main__":
         daemon.Daemon.run = run_patch
 
         # Perform service action
-        daemon = daemon.Daemon('telemetry', '/var/run/aerospike/telemetry.pid', user, group)
+        daemon = daemon.Daemon('telemetry', '/var/run/aerospike/telemetry.pid', opts['user'], opts['group'])
         if 'start' == service_action:
             daemon.start()
         elif 'stop' == service_action:

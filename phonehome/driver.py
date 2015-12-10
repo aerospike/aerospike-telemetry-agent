@@ -18,7 +18,7 @@ from . import LOGFILETEXT as logFileText
 class TelemetryAgent:
     def __init__(self, options):
         self.options = options
-        self.homeConnection = HomeLine(options['home-url'] + homeUrlPath)
+        self.homeConnection = HomeLine(options['home-url'] + homeUrlPath, options['proxy'], options['cafile'])
         self.leafAddress = "127.0.0.1"
 
     def wait_for_leaf_connection(self, first_time=False):
