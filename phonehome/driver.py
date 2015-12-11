@@ -67,7 +67,7 @@ class TelemetryAgent:
         if blob == None:
             # Didn't get anything back from Home.
             # Just try to reconnect and wait for next time around.
-            self.homeConnection = HomeLine(self.options['home-url'] + homeUrlPath, options['proxy'], options['cafile'])
+            self.homeConnection = HomeLine(self.options['home-url'] + homeUrlPath, self.options['proxy'], self.options['cafile'])
 
     def run(self):
         # Get info port of ASD.
