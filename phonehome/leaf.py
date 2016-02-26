@@ -371,6 +371,12 @@ class LeafLine:
             queries['sindexes'] = sindexes
         fields['queries'] = queries
 
+        # UDFs
+        udfs = {}
+        statsStr = self.getInfo("udf-list")
+        udfs['num-udf-files'] = len(filter(bool, statsStr.split(';')))
+        fields['udfs'] = udfs
+
         # System
         system = {'name': os.name,
                   'system': platform.system(),
