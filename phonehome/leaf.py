@@ -4,6 +4,7 @@ import os
 import platform
 import socket
 import struct
+import sys
 
 from cpuinfo import cpu, cpuinfo
 
@@ -377,10 +378,23 @@ class LeafLine:
         udfs['num-udf-files'] = len(filter(bool, statsStr.split(';')))
         fields['udfs'] = udfs
 
+        # Memory
+        with open("/proc/meminfo", "r") as infile:
+            meminfo_str = infile.read()
+        meminfo_lines = filter(bool, meminfo_str.split('\n'))
+        meminfo = {}
+        for line in meminfo_lines:
+            kv = line.split(':')
+            meminfo[kv[0]] = kv[1].strip()
+        fields['meminfo'] = meminfo
+
         # System
-        system = {'name': os.name,
-                  'system': platform.system(),
-                  'release': platform.release()}
+        system = {'os-name': os.name,
+                  'linux_distribution': platform.linux_distribution(),
+                  'platform': sys.platform,
+                  'uname': list(platform.uname())}
+        # Anonymize node name.
+        system['uname'][1] = anonymize_data(system['uname'][1])
         system['CPU information'] = []
         for name in dir(cpuinfo):
             if name[0] == '_' and name[1] != '_':
@@ -401,4 +415,3 @@ class LeafLine:
             del fields['system']
 
         return fields
-
