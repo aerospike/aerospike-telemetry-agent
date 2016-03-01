@@ -333,33 +333,35 @@ class LeafLine:
                 logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
         # Namespaces
+        namespaces = {}
         statsStr = self.getInfo("namespaces")
         if check_statsStr(statsStr, "namespaces"):
-            fields['namespaces'] = statsStr.split(";")
-
-        # Storage
-        storage = {}
-        if 'namespaces' in fields:
-            for ns in fields['namespaces']:
+            namespace_names = statsStr.split(";")
+            for ns in namespace_names:
                 statsStr = self.getInfo("namespace/" + ns)
                 if check_statsStr(statsStr, "namespace " + ns):
-                    storage[ns] = semicolon_list_to_dict(statsStr)
-            fields['storage'] = storage
+                    namespaces[ns] = semicolon_list_to_dict(statsStr)
+        fields['namespaces'] = namespaces
+
+        # Anonymize namespaces.
+        # <TBD>
 
         # Queries
         queries = {}
         statsStr = self.getInfo("throughput:hist=query")
         if check_statsStr(statsStr, "throughput hist"):
             queries['throughput'] = statsStr
-
         statsStr = self.getInfo("latency:hist=query")
         if check_statsStr(statsStr, "latency hist"):
-            queries['sindex'] = statsStr
-        statsStr = self.getInfo("sindex")
+            queries['latency'] = statsStr
+        fields['queries'] = queries
 
-        if check_statsStr(statsStr, "sindexes"):
-            queries['sindex'] = statsStr
-            sindexes = {}
+        # Secondary Indexes
+        sindex_metadata = {}
+        sindexes = {}
+        statsStr = self.getInfo("sindex")
+        if check_statsStr(statsStr, "sindex metadata"):
+            sindex_metadata = statsStr
             for si in statsStr.split(";")[:-1]: # For some reason, the returned string ends in ';', hence the -1
                 sifieldskv = si.split(":")
                 sifields = {}
@@ -369,8 +371,11 @@ class LeafLine:
                 statsStr = self.getInfo("sindex/" + sifields['ns'] + "/" + sifields['indexname'])
                 if check_statsStr(statsStr, "sindex " + sifields['indexname']):
                     sindexes[sifields['indexname']] = semicolon_list_to_dict(statsStr)
-            queries['sindexes'] = sindexes
-        fields['queries'] = queries
+        fields['sindex-metadata'] = sindex_metadata
+        fields['sindexes'] = sindexes
+
+        # Anonymize Secondary Indexes.
+        # <TBD>
 
         # UDFs
         udfs = {}
