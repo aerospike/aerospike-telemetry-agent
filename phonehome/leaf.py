@@ -41,7 +41,7 @@ def anonymize_my_ip_addr():
 
 def anonymize_ip_port(ip_port_pair):
     """
-    Takes a string of the form <ip address>:<port>
+    Takes a string of the form <IP address>:<port>
     Returns a string of the form <unique id>:<port>
     """
     if len(ip_port_pair) == 0:
@@ -56,9 +56,7 @@ def anonymize_ip_port(ip_port_pair):
             return anonymize_data(ip) + ":" + str(port)
 
 def decode_ip_addr(ipaddr):
-    """
-    From PSI -- iddecode
-    """
+    """Convert 32-bit numeric IPv4 address to string of 4 dot-separated octets."""
     d = ipaddr & 0xff
     ipaddr >>= 8
     c = ipaddr & 0xff
@@ -70,21 +68,19 @@ def decode_ip_addr(ipaddr):
 
 def decode_node_id(node_id, ra):
     """
-    Take the node.
-    Return a string in the format:
-        Not rack aware -- <fabric port>:<MAC address>
-        RA Static      -- <fabric port>:<group id>:<node>
-        RA Dynamic     -- <fabric port>:<group id>:<ip>
+    Take the node id and Rack Aware format "ra".
+    Return a string according to the specified format:
+        Not Rack Aware -- <fabric port>:<MAC address>
+        RA Static      -- <fabric port>:<group id>:<node id>
+        RA Dynamic     -- <fabric port>:<group id>:<IP address>
 
     All fields except the fabric port are anonymized using the md5 hash
     function.
-
-    Logic from PSI -- iddecode
     """
-    # Pad out address to 16 bytes
+    # Left pad node id with zeroes out to 16 hex characters
     nid = '0' * (16 - len(node_id)) + node_id
 
-    # Get IP address --- the first 4 bytes
+    # Get service port from the first 4 hex characters
     port = str(int(nid[:4], 16))
 
     if ra == RACK_AWARE_T.NOT_RA:
@@ -93,8 +89,8 @@ def decode_node_id(node_id, ra):
         for i in xrange(12,3,-2):
             MAC += ':' + nid[i:i+2].upper()
         return port + ':' + anonymize_data(MAC)
-    elif ra > RACK_AWARE_T.NOT_RA: # RACK AWARE
-        # Get group and node id
+    elif ra > RACK_AWARE_T.NOT_RA: # Rack Aware formats
+        # Get group id and node id or IP address
         group_id = int(nid[4:8], 16)
         node_id = int(nid[8:17], 16)
         if ra == RACK_AWARE_T.STATIC:
@@ -103,13 +99,13 @@ def decode_node_id(node_id, ra):
         elif ra == RACK_AWARE_T.DYNAMIC:
             return port + ':' + anonymize_data(group_id) + ':' + anonymize_data(node_id)
 
-    logging.info("Unknown node mode. Not decoding node id.")
+    logging.info("Unknown node id format ~~ Not decoding node id.")
     return node_id
 
 def semicolon_list_to_dict(semicolon_list):
     """
-    Convert a semicolon delimited list of the form METRIX:VALUE to a python
-    dictionary.
+    Convert a semicolon-delimited list of items of the form <metric>:<value>
+    to a Python dictionary.
     """
     out = {}
     for metric_value in semicolon_list.split(";"):
@@ -126,19 +122,16 @@ def check_statsStr(statsStr, stat):
         return False
     return True
 
-def g_partition(s, sep):
-	return( s.partition(sep) )
-
 def receivedata(sock, sz):
-	pos = 0
-	while pos < sz:
-		chunk = sock.recv(sz - pos)
-		if pos == 0:
-			data = chunk
-		else:
-			data += chunk
-		pos += len(chunk)
-	return data
+    pos = 0
+    while pos < sz:
+        chunk = sock.recv(sz - pos)
+        if pos == 0:
+            data = chunk
+        else:
+            data += chunk
+        pos += len(chunk)
+    return data
 
 #--------------------------------------------------------------------------------
 # LEAFLINE
@@ -156,7 +149,7 @@ class LeafLine:
             self.info_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.info_socket.settimeout(0.5)
             logging.debug("About to connect to info socket.")
-            self.info_socket.connect((self.host, int(self.port) ))
+            self.info_socket.connect((self.host, int(self.port)))
         except Exception:
             if logging.getLogger().isEnabledFor(logging.DEBUG):
                 logging.exception("Exception connecting to socket.")
@@ -195,11 +188,11 @@ class LeafLine:
             return -1
 
         lines = rsp_data.split("\n")
-        name, sep, value = g_partition(lines[0],"\t")
+        name, sep, value = lines[0].partition("\t")
 
         if name != names:
             logging.error("problem: requested name %s got name %s" % (names, name))
-            return(-1)
+            return -1
         return value
 
     def logMessage(self, message):
@@ -228,11 +221,11 @@ class LeafLine:
     def fetchInfoMain(self):
         fields = {} # name , value hash of current statistics
 
-        # Config
+        # Configuration
         statsStr = self.getInfo("get-config")
         if check_statsStr(statsStr, "config"):
             fields['config'] = semicolon_list_to_dict(statsStr)
-            # Anon. certain fields. Fields not guaranteed to exist.
+            # Anonymize certain fields (which are not guaranteed to exist.)
             try:
                 fields['config']['service-address'] = anonymize_data(fields['config']['service-address'])
             except KeyError, e:
@@ -326,7 +319,7 @@ class LeafLine:
         statsStr = self.getInfo("statistics")
         if check_statsStr(statsStr, "statistics"):
             fields['statistics'] = semicolon_list_to_dict(statsStr)
-            # Anon. certain fields.
+            # Anonymize certain fields.
             try:
                 fields['statistics']['paxos_principal'] = decode_node_id(fields['statistics']['paxos_principal'], ra)
             except KeyError, e:
@@ -340,11 +333,9 @@ class LeafLine:
             for ns in namespace_names:
                 statsStr = self.getInfo("namespace/" + ns)
                 if check_statsStr(statsStr, "namespace " + ns):
-                    namespaces[ns] = semicolon_list_to_dict(statsStr)
+                    # Note:  Anonymize the namespace name.
+                    namespaces[anonymize_data(ns)] = semicolon_list_to_dict(statsStr)
         fields['namespaces'] = namespaces
-
-        # Anonymize namespaces.
-        # <TBD>
 
         # Queries
         queries = {}
@@ -357,25 +348,47 @@ class LeafLine:
         fields['queries'] = queries
 
         # Secondary Indexes
-        sindex_metadata = {}
+        sindex_metadata = []
         sindexes = {}
         statsStr = self.getInfo("sindex")
         if check_statsStr(statsStr, "sindex metadata"):
-            sindex_metadata = statsStr
-            for si in statsStr.split(";")[:-1]: # For some reason, the returned string ends in ';', hence the -1
-                sifieldskv = si.split(":")
-                sifields = {}
-                for sif in sifieldskv:
-                    k, v = sif.split("=")
-                    sifields[k] = v
-                statsStr = self.getInfo("sindex/" + sifields['ns'] + "/" + sifields['indexname'])
-                if check_statsStr(statsStr, "sindex " + sifields['indexname']):
-                    sindexes[sifields['indexname']] = semicolon_list_to_dict(statsStr)
+            for si in filter(bool, statsStr.split(";")):
+                si_fields_kv = si.split(":")
+                si_fields = {}
+                ns = indexname = ""
+                for field in si_fields_kv:
+                    k, v = field.split("=")
+                    # Anonymize certain fields and save some for use below.
+                    if k in ('ns', 'set', 'indexname', 'bin', 'path'):
+                        if k == 'ns':
+                            ns = v
+                        elif k == 'indexname':
+                            indexname = v
+                        v = anonymize_data(v)
+                    si_fields[k] = v
+                sindex_metadata.append(si_fields)
+                statsStr = self.getInfo("sindex/" + ns + "/" + indexname)
+                if check_statsStr(statsStr, "sindex " + indexname):
+                    # Note:  Use anonymized SIndex name.
+                    sindexes[si_fields['indexname']] = semicolon_list_to_dict(statsStr)
         fields['sindex-metadata'] = sindex_metadata
         fields['sindexes'] = sindexes
 
-        # Anonymize Secondary Indexes.
-        # <TBD>
+        # Sets
+        sets = []
+        statsStr = self.getInfo("sets")
+        if check_statsStr(statsStr, "sets"):
+            for set in filter(bool, statsStr.split(';')):
+                set_fields_kv = set.split(":")
+                set_fields = {}
+                for field in set_fields_kv:
+                    k, v = field.split("=")
+                    # Anonymize certain fields.
+                    if k in ('ns_name', 'set_name'):
+                        v = anonymize_data(v)
+                    set_fields[k] = v
+                sets.append(set_fields)
+        fields['sets'] = sets
 
         # UDFs
         udfs = {}
@@ -389,11 +402,11 @@ class LeafLine:
         meminfo_lines = filter(bool, meminfo_str.split('\n'))
         meminfo = {}
         for line in meminfo_lines:
-            kv = line.split(':')
-            meminfo[kv[0]] = kv[1].strip()
+            k, v = line.split(':')
+            meminfo[k] = v.strip()
         fields['meminfo'] = meminfo
 
-        # System
+        # Host System Information
         system = {'os-name': os.name,
                   'linux_distribution': platform.linux_distribution(),
                   'platform': sys.platform,
