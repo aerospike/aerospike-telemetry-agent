@@ -53,12 +53,12 @@ class TelemetryAgent:
     def phonehome(self, infoMap):
         # add version, interval, and email address (if supplied) into the param list
         infoMap["telemetry-agent-version"] = version
-        infoMap["interval"] = self.options['interval']
+        infoMap["interval"] = str(int(self.options['interval']))
         if self.options['email']:
             infoMap["email"] = self.options['email']
 
         # Unix Epoch Time
-        infoMap['unix-epoch-time'] = int(time.time())
+        infoMap['unix-epoch-time'] = str(int(time.time()))
 
         # Anonymized IP address of sender
         infoMap['telemetry-agent-ip-address'] = anonymize_my_ip_addr()

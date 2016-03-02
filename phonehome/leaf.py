@@ -393,7 +393,7 @@ class LeafLine:
         # UDFs
         udfs = {}
         statsStr = self.getInfo("udf-list")
-        udfs['num-udf-files'] = len(filter(bool, statsStr.split(';')))
+        udfs['num-udf-files'] = str(len(filter(bool, statsStr.split(';'))))
         fields['udfs'] = udfs
 
         # Memory
