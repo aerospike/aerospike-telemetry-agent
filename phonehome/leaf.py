@@ -347,49 +347,6 @@ class LeafLine:
             queries['latency'] = statsStr
         fields['queries'] = queries
 
-        # Secondary Indexes
-        sindex_metadata = []
-        sindexes = {}
-        statsStr = self.getInfo("sindex")
-        if check_statsStr(statsStr, "sindex metadata"):
-            for si in filter(bool, statsStr.split(";")):
-                si_fields_kv = si.split(":")
-                si_fields = {}
-                ns = indexname = ""
-                for field in si_fields_kv:
-                    k, v = field.split("=")
-                    # Anonymize certain fields and save some for use below.
-                    if k in ('ns', 'set', 'indexname', 'bin', 'path'):
-                        if k == 'ns':
-                            ns = v
-                        elif k == 'indexname':
-                            indexname = v
-                        v = anonymize_data(v)
-                    si_fields[k] = v
-                sindex_metadata.append(si_fields)
-                statsStr = self.getInfo("sindex/" + ns + "/" + indexname)
-                if check_statsStr(statsStr, "sindex " + indexname):
-                    # Note:  Use anonymized SIndex name.
-                    sindexes[si_fields['indexname']] = semicolon_list_to_dict(statsStr)
-        fields['sindex-metadata'] = sindex_metadata
-        fields['sindexes'] = sindexes
-
-        # Sets
-        sets = []
-        statsStr = self.getInfo("sets")
-        if check_statsStr(statsStr, "sets"):
-            for set in filter(bool, statsStr.split(';')):
-                set_fields_kv = set.split(":")
-                set_fields = {}
-                for field in set_fields_kv:
-                    k, v = field.split("=")
-                    # Anonymize certain fields.
-                    if k in ('ns_name', 'set_name'):
-                        v = anonymize_data(v)
-                    set_fields[k] = v
-                sets.append(set_fields)
-        fields['sets'] = sets
-
         # UDFs
         udfs = {}
         statsStr = self.getInfo("udf-list")
@@ -406,30 +363,75 @@ class LeafLine:
             meminfo[k] = v.strip()
         fields['meminfo'] = meminfo
 
-        # Host System Information
-        system = {'os-name': os.name,
-                  'linux_distribution': platform.linux_distribution(),
-                  'platform': sys.platform,
-                  'uname': list(platform.uname())}
-        # Anonymize node name.
-        system['uname'][1] = anonymize_data(system['uname'][1])
-        system['CPU information'] = []
-        for name in dir(cpuinfo):
-            if name[0] == '_' and name[1] != '_':
-                r = getattr(cpu,name[1:])()
-                if r:
-                    if r!=1:
-                        system['CPU information'].append('%s=%s' %(name[1:],r))
-                    else:
-                        system['CPU information'].append(name[1:])
-        system['CPU information'].append(cpu.info)
-        fields['system'] = system
-
-        # Don't resend data if it likely hasn't changed.
         prev_uptime = self.uptime
         self.uptime = int(fields['statistics']['uptime'])
-        if prev_uptime != None and prev_uptime < self.uptime:
+
+        # Send additional infrequently-changing or potentially verbose data
+        # whenever either the Telemetry Agent or the Aerospike Server is restarted:
+        if prev_uptime == None or prev_uptime > self.uptime:
+            # Secondary Indexes
+            sindex_metadata = []
+            sindexes = {}
+            statsStr = self.getInfo("sindex")
+            if check_statsStr(statsStr, "sindex metadata"):
+                for si in filter(bool, statsStr.split(";")):
+                    si_fields_kv = si.split(":")
+                    si_fields = {}
+                    ns = indexname = ""
+                    for field in si_fields_kv:
+                        k, v = field.split("=")
+                        # Anonymize certain fields and save some for use below.
+                        if k in ('ns', 'set', 'indexname', 'bin', 'path'):
+                            if k == 'ns':
+                                ns = v
+                            elif k == 'indexname':
+                                indexname = v
+                            v = anonymize_data(v)
+                        si_fields[k] = v
+                    sindex_metadata.append(si_fields)
+                    statsStr = self.getInfo("sindex/" + ns + "/" + indexname)
+                    if check_statsStr(statsStr, "sindex " + indexname):
+                        # Note:  Use anonymized SIndex name.
+                        sindexes[si_fields['indexname']] = semicolon_list_to_dict(statsStr)
+            fields['sindex-metadata'] = sindex_metadata
+            fields['sindexes'] = sindexes
+
+            # Sets
+            sets = []
+            statsStr = self.getInfo("sets")
+            if check_statsStr(statsStr, "sets"):
+                for set in filter(bool, statsStr.split(';')):
+                    set_fields_kv = set.split(":")
+                    set_fields = {}
+                    for field in set_fields_kv:
+                        k, v = field.split("=")
+                        # Anonymize certain fields.
+                        if k in ('ns_name', 'set_name'):
+                            v = anonymize_data(v)
+                        set_fields[k] = v
+                    sets.append(set_fields)
+            fields['sets'] = sets
+
+            # Host System Information
+            system = {'os-name': os.name,
+                      'linux_distribution': platform.linux_distribution(),
+                      'platform': sys.platform,
+                      'uname': list(platform.uname())}
+            # Anonymize node name.
+            system['uname'][1] = anonymize_data(system['uname'][1])
+            system['CPU information'] = []
+            for name in dir(cpuinfo):
+                if name[0] == '_' and name[1] != '_':
+                    r = getattr(cpu,name[1:])()
+                    if r:
+                        if r!=1:
+                            system['CPU information'].append('%s=%s' %(name[1:],r))
+                        else:
+                            system['CPU information'].append(name[1:])
+            system['CPU information'].append(cpu.info)
+            fields['system'] = system
+        else:
+            # Allow config. to be used above, but throw it away if it's not being sent.
             del fields['config']
-            del fields['system']
 
         return fields
