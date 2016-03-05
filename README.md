@@ -42,7 +42,11 @@ or
 
 If Aerospike is already running when using either of the above methods, you must restart Aerospike (or just the Telemetry Agent) for the change to take effect:
 
-	$ service aerospike restart
+	$ service aerospike restart           -- Under Sys V Init. (On most distros.)
+
+or
+
+	$ systemctl restart aerospike         -- Under systemd. (Currently the default on Red Hat EL7-based distros only.)
 
 or
 
