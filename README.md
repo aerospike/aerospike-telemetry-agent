@@ -16,7 +16,7 @@ There are two ways to enable and disable the Telemetry Agent:
 
 ### Directly Editing the Configuration File
 
-If the server was installed via DEB or RPM, the configuration file can be found at `/etc/aerospike/telemetry.conf`. If you’re running the server from within the GitHub repository, the relevant configuration file can be found at `<repo path>/as/etc/telemetry_dev.conf`.
+If the server was installed via DEB or RPM, the configuration file can be found at `/etc/aerospike/telemetry.conf`. If you're running the server from within the GitHub repository, the relevant configuration file can be found at `<repo path>/as/etc/telemetry_dev.conf`.
 
 To disable (or enable) the Telemetry Agent, change the `disable` value in the configuration file to `true` (or `false`.)
 
@@ -30,7 +30,7 @@ or
 
 	$ python /opt/aerospike/telemetry/telemetry.py /etc/aerospike/telemetry.conf --enable
 
-If you’re running from within the repository, run:
+If you're running from within the repository, run:
 
 	$ python <repo path>/modules/telemetry/telemetry.py <repo path>/as/etc/telemetry_dev.conf --disable
 
