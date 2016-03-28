@@ -75,7 +75,7 @@ loglevel = debug
 [main]
 disable = false
 interval = 600
-home-url = http://info.prod.aerospike.com
+home-url = https://telemetry.aerospike.com
 email =
 user = aerospike
 group = aerospike
