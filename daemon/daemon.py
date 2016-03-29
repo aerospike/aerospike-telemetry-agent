@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, time, atexit, pwd, grp
+import sys, os, time, atexit, pwd, grp, logging
 from signal import SIGTERM 
 
 class Daemon:
@@ -24,29 +24,48 @@ class Daemon:
         "Advanced Programming in the UNIX Environment" for details (ISBN 0201563177)
         https://web.archive.org/web/20070410070022/http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16
         """
-        try: 
-            pid = os.fork() 
+        # When dropping privs., verify the group and user exist before forking, so any error will get printed.
+        if os.getuid() == 0:
+            if self.group:
+                try:
+                    self.the_grp = grp.getgrnam(self.group)
+                except Exception, ex:
+                    msg = "failed to find group \"%s\"" % self.group
+                    logging.critical(msg + " [%s]" % str(ex))
+                    sys.stdout.write("  ..." + msg + "!\n")
+                    sys.exit(1)
+            if self.user:
+                try:
+                    self.the_pwd = pwd.getpwnam(self.user)
+                except Exception, ex:
+                    msg = "failed to find user \"%s\"" % self.user
+                    logging.critical(msg + " [%s]" % str(ex))
+                    sys.stdout.write("  ..." + msg + "!\n")
+                    sys.exit(1)
+
+        try:
+            pid = os.fork()
             if pid > 0:
                 # exit first parent
-                sys.exit(0) 
-        except OSError, e: 
-            sys.stderr.write("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
+                sys.exit(0)
+        except OSError, e:
+            logging.critical("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
             sys.exit(1)
 
         # decouple from parent environment
-        os.chdir("/") 
-        os.setsid() 
-        os.umask(0) 
+        os.chdir("/")
+        os.setsid()
+        os.umask(0)
 
         # do second fork
-        try: 
-            pid = os.fork() 
+        try:
+            pid = os.fork()
             if pid > 0:
                 # exit from second parent
-                sys.exit(0) 
-        except OSError, e: 
-            sys.stderr.write("fork #2 failed: %d (%s)\n" % (e.errno, e.strerror))
-            sys.exit(1) 
+                sys.exit(0)
+        except OSError, e:
+            logging.critical("fork #2 failed: %d (%s)\n" % (e.errno, e.strerror))
+            sys.exit(1)
 
         # redirect standard file descriptors
         sys.stdout.flush()
@@ -71,17 +90,25 @@ class Daemon:
                 # drop supplementary groups
                 os.setgroups([])
                 if self.group:
-                    the_grp = grp.getgrnam(self.group)
-                    os.setgid(the_grp.gr_gid)
+                    try:
+                        os.setgid(self.the_grp.gr_gid)
+                    except Exception, ex:
+                        logging.critical("failed to set group to \"%s\" [%s]" % (self.group, str(ex)))
+                        sys.exit(1)
                 if self.user:
-                    the_pwd = pwd.getpwnam(self.user)
-                    os.setuid(the_pwd.pw_uid)
+                    try:
+                        the_pwd = pwd.getpwnam(self.user)
+                        os.setuid(self.the_pwd.pw_uid)
+                    except Exception, ex:
+                        logging.critical("failed to set user to \"%s\" [%s]" % (self.user, str(ex)))
+                        sys.exit(1)
             else:
                 if self.user or self.group:
-                    sys.stderr.write('Not privileged ~~ Cannot change to user [%s] / group [%s]\n' % (self.user, self.group))
+                    logging.critical('not privileged ~~ cannot change to user [%s] / group [%s]' % (self.user, self.group))
                     sys.exit(1)
         except Exception, ex:
-            sys.exit(str(ex))
+            logging.critical("daemon.demote() caught exception [%s]" % str(ex))
+            sys.exit(1)
 
     def delpid(self):
         os.remove(self.pidfile)
@@ -100,9 +127,8 @@ class Daemon:
             pid = None
 
         if pid:
-            message = "  ...fail! %s is already running\n"
-            sys.stderr.write(message % self.name)
-            sys.exit(1)
+            sys.stdout.write("  ...%s is already running\n" % self.name)
+            return # not an error
 
         # Start the daemon
         self.init()
@@ -123,9 +149,8 @@ class Daemon:
             pid = None
 
         if not pid:
-            message = "  ...fail! %s is not running.\n"
-            sys.stderr.write(message % self.name)
-            return # not an error in a restart
+            sys.stdout.write("  ...%s is not running.\n" % self.name)
+            return # not an error
 
         # Try killing the daemon process
         try:
@@ -140,8 +165,6 @@ class Daemon:
             else:
                 print str(err)
                 sys.exit(1)
-
-        sys.stdout.write("  ...success!\n")
 
     def restart(self):
         """
@@ -192,10 +215,10 @@ class Daemon:
             procfile.close()
         except IOError:
             sys.stdout.write("There is no process with the PID Specified in %s\n" % self.pidfile)
-            sys.exit(0)
+            sys.exit(1)
         except TypeError:
             sys.stdout.write("* %s is not running\n" % self.name)
-            sys.exit(0)
+            sys.exit(3)
 
         sys.stdout.write("* %s is running with PID %d\n" % (self.name, pid))
 
