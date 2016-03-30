@@ -12,6 +12,7 @@ if __name__ == "__main__":
     optparser = OptionParser(usage=usage, add_help_option=True)
     optparser.add_option("--disable", dest="disable", action="store_true", default=False, help="Disable Telemetry Agent. (Requires agent restart to take effect.)")
     optparser.add_option("--enable", dest="enable", action="store_true", default=False, help="Enable Telemetry Agent. (Requires agent restart to take effect.)")
+    optparser.add_option("--fgdaemon", dest="fgdaemon", action="store_true", default=False, help="Enable foreground daemon mode.")
     optparser.add_option("--set-cafile", dest="cafile", type="string", metavar="<CAFILE>", help="Set certificate authority file.")
     optparser.add_option("--set-email", dest="email", type="string", metavar="<EMAIL>", help="Set email address.")
     optparser.add_option("--set-group", dest="group", type="string", metavar="<GROUP>", help="Set daemon group.")
@@ -30,7 +31,7 @@ if __name__ == "__main__":
     config_filename = args[0]
 
     # Read configuration file.
-    defaults = {'cafile': None, 'email': None, 'group': None, 'proxy': None, 'user': None}
+    defaults = {'cafile': None, 'email': None, 'fgdaemon': False, 'group': None, 'proxy': None, 'user': None}
     config = ConfigParser.SafeConfigParser(defaults = defaults)
     try:
         with open(config_filename, 'r') as config_fd:
@@ -49,6 +50,11 @@ if __name__ == "__main__":
         if options.enable:
             config.set('main', 'disable', 'false')
             edit_config = True
+        if options.fgdaemon:
+            config.set('main', 'fgdaemon', 'true')
+        else:
+            config.set('main', 'fgdaemon', 'false')
+            # (Do not update the config. file.)
         if options.cafile:
             config.set('main', 'cafile', options.cafile)
             edit_config = True
@@ -89,13 +95,14 @@ if __name__ == "__main__":
             # Required options:
             'home-url': config.get('main', 'home-url'),
             'interval': config.getfloat('main', 'interval'),
-            'disable': config.getboolean('main','disable'),
+            'disable': config.getboolean('main', 'disable'),
             'logfile': config.get('logging', 'logfile'),
             'loglevel': config.get('logging', 'loglevel'),
             'config-file': config.get('asd', 'config-file'),
             # Optional options:
             'cafile': config.get('main', 'cafile'),
             'email': config.get('main', 'email'),
+            'fgdaemon': config.getboolean('main', 'fgdaemon'),
             'group': config.get('main', 'group'),
             'proxy': config.get('main', 'proxy'),
             'user': config.get('main', 'user')}
@@ -130,7 +137,7 @@ if __name__ == "__main__":
         daemon.Daemon.run = run_patch
 
         # Perform service action
-        daemon = daemon.Daemon('telemetry', '/var/run/aerospike/telemetry.pid', opts['user'], opts['group'])
+        daemon = daemon.Daemon('telemetry', opts['fgdaemon'], '/var/run/aerospike/telemetry.pid', opts['user'], opts['group'])
         if 'start' == service_action:
             daemon.start()
         elif 'stop' == service_action:

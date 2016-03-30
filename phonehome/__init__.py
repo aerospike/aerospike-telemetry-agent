@@ -37,7 +37,7 @@ def init(options):
     # Configure logging before daemonizing and potentially dropping privileges.
     logFormat = '[%(asctime)s] p%(process)s %(levelname)s: (%(filename)s:%(lineno)d) %(message)s'
     datefmt = '%m-%d %H:%M:%S'
-    if options['logfile'] == 'out':
+    if options['logfile'] == 'out' or options['fgdaemon']:
         logging.basicConfig(format=logFormat, datefmt=datefmt, stream=sys.stdout, level=LEVELS.get(options['loglevel']))
     else:
         logging.basicConfig(format=logFormat, datefmt=datefmt, filename=options['logfile'], level=LEVELS.get(options['loglevel']))

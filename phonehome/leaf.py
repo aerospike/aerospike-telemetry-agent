@@ -1,3 +1,4 @@
+import datetime
 import hashlib
 import logging
 import os
@@ -142,7 +143,9 @@ class LeafLine:
     def __init__(self, port, host):
         self.port = port
         self.host = host
-        self.uptime = None # If this goes backwards, resend the config.
+        self.asd_uptime = None # If this goes backwards, resend the config.
+        self.next_full_send_time = datetime.datetime.now() # Send full data when Telemetry Agent starts up
+        self.full_send_interval = datetime.timedelta(days=1) # Send full data once per day
 
     def createInfoSocket(self):
         try:
@@ -363,12 +366,16 @@ class LeafLine:
             meminfo[k] = v.strip()
         fields['meminfo'] = meminfo
 
-        prev_uptime = self.uptime
-        self.uptime = int(fields['statistics']['uptime'])
+        prev_asd_uptime = self.asd_uptime
+        self.asd_uptime = int(fields['statistics']['uptime'])
 
         # Send additional infrequently-changing or potentially verbose data
-        # whenever either the Telemetry Agent or the Aerospike Server is restarted:
-        if prev_uptime == None or prev_uptime > self.uptime:
+        # whenever either the Telemetry Agent or Aerospike Server is restarted,
+        # or the full send interval has elapsed.
+        now = datetime.datetime.now()
+        if prev_asd_uptime == None or prev_asd_uptime > self.asd_uptime or now > self.next_full_send_time:
+            self.next_full_send_time = now + self.full_send_interval
+
             # Secondary Indexes
             sindex_metadata = []
             sindexes = {}

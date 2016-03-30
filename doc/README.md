@@ -24,6 +24,7 @@ Options:
                         take effect.)
   --enable              Enable Telemetry Agent. (Requires agent restart to
                         take effect.)
+  --fgdaemon            Enable foreground daemon mode.
   --set-cafile=<CAFILE>
                         Set certificate authority file.
   --set-email=<EMAIL>   Set email address.
@@ -57,6 +58,8 @@ Example usage:
 ```
 $ python ./telemetry.py telemetry.conf start
 ```
+
+**Note**:  The `--fgdaemon` option is used with the `start` command under `systemd` to run the Telemetry Agent as a "new style" (foreground) daemon.
 
 ## Configuration
 

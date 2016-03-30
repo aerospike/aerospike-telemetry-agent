@@ -9,14 +9,15 @@ class Daemon:
     
     Usage: subclass the Daemon class and override the run() method
     """
-    def __init__(self, name, pidfile, user, group, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+    def __init__(self, name, fgdaemon, pidfile, user, group, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+        self.name = name
+        self.fgdaemon = fgdaemon
+        self.pidfile = pidfile
+        self.user = user
+        self.group = group
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
-        self.pidfile = pidfile
-        self.name = name
-        self.user = user
-        self.group = group
 
     def daemonize(self):
         """
@@ -118,6 +119,7 @@ class Daemon:
         Start the daemon
         """
         sys.stdout.write("* starting %s\n" % self.name)
+
         # Check for a pidfile to see if the daemon already runs
         try:
             pf = file(self.pidfile, 'r')
@@ -132,7 +134,8 @@ class Daemon:
 
         # Start the daemon
         self.init()
-        self.daemonize()
+        if not self.fgdaemon:
+            self.daemonize()
         self.run()
 
     def stop(self):
