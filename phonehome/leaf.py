@@ -109,7 +109,7 @@ def semicolon_list_to_dict(semicolon_list):
     to a Python dictionary.
     """
     out = {}
-    for metric_value in semicolon_list.split(";"):
+    for metric_value in filter(bool, semicolon_list.split(";")):
         metric, value = metric_value.split("=")
         if metric in out:
             out[metric] += ';' + value
@@ -353,16 +353,16 @@ class LeafLine:
         # UDFs
         udfs = {}
         statsStr = self.getInfo("udf-list")
-        udfs['num-udf-files'] = str(len(filter(bool, statsStr.split(';'))))
+        udfs['num-udf-files'] = str(len(filter(bool, statsStr.split(";"))))
         fields['udfs'] = udfs
 
         # Memory
         with open("/proc/meminfo", "r") as infile:
             meminfo_str = infile.read()
-        meminfo_lines = filter(bool, meminfo_str.split('\n'))
+        meminfo_lines = filter(bool, meminfo_str.split("\n"))
         meminfo = {}
         for line in meminfo_lines:
-            k, v = line.split(':')
+            k, v = line.split(":")
             meminfo[k] = v.strip()
         fields['meminfo'] = meminfo
 
@@ -407,7 +407,7 @@ class LeafLine:
             sets = []
             statsStr = self.getInfo("sets")
             if check_statsStr(statsStr, "sets"):
-                for set in filter(bool, statsStr.split(';')):
+                for set in filter(bool, statsStr.split(";")):
                     set_fields_kv = set.split(":")
                     set_fields = {}
                     for field in set_fields_kv:
