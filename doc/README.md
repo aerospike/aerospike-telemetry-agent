@@ -100,25 +100,41 @@ When ASD is installed via a DEB or RPM package, the main Telemetry Agent script 
 
 To disable (or enable) the Telemetry Agent, run:
 
-	$ python /opt/aerospike/telemetry/telemetry.py --disable
+	$ python /opt/aerospike/telemetry/telemetry.py /etc/aerospike/telemetry.conf --disable
 
 or
 
-	$ python /opt/aerospike/telemetry/telemetry.py --enable
+	$ python /opt/aerospike/telemetry/telemetry.py /etc/aerospike/telemetry.conf --enable
+
+If you're running from within the repository, run:
+
+	$ python <repo path>/modules/telemetry/telemetry.py <repo path>/as/etc/telemetry_dev.conf --disable
+
+or
+
+	$ python <repo path>/modules/telemetry/telemetry.py <repo path>/as/etc/telemetry_dev.conf --enable
 
 If Aerospike is already running when using either of the above methods, you must restart Aerospike (or just the Telemetry Agent) for the change to take effect:
 
-	$ service aerospike restart           -- Under Sys V Init. (On most distros.)
+On most distros (based on SysV Init.), use:
 
-or
-
-	$ systemctl restart aerospike         -- Under systemd. (Currently the default on Red Hat EL7-based distros only.)
+	$ service aerospike restart
 
 or
 
 	$ service aerospike_telemetry restart
 
-for the change to take effect.
+Under `systemd`-based distros (RedHat EL7-based distros (e.g., RHEL 7, CentOS 7, Fedora 15+) and Debian 8), use:
+
+	$ systemctl restart aerospike
+
+or
+
+	$ systemctl restart aerospike_telemetry
+
+or, when ASD is run from within the open source tree (i.e., GitHub repo.):
+
+	$ make stop start
 
 ## Data Format
 
