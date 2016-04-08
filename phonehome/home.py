@@ -41,15 +41,15 @@ class HomeLine:
 		resp = None
 
 		try:
-			resp = urllib2.urlopen(req, json.dumps(requestParams), **self.kwargs)
+			resp = urllib2.urlopen(req, json.dumps(requestParams), timeout = 30, **self.kwargs)
 			resp = resp.read()
 		except urllib2.HTTPError, e:
 			logging.error("HTTPError: %s", str(e.code))
 		except urllib2.URLError, e:
 			logging.error("URLError: %s", str(e.reason))
 		except httplib.HTTPException, e:
-			logging.error("HTTPException")
-		except:
-			logging.exception("Unexpected error")
+			logging.error("HTTPException: %s", str(e))
+		except Exception, e:
+			logging.exception("Unexpected error: %s", str(e))
 
 		return resp

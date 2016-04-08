@@ -153,14 +153,19 @@ class LeafLine:
             self.info_socket.settimeout(0.5)
             logging.debug("About to connect to info socket.")
             self.info_socket.connect((self.host, int(self.port)))
-        except Exception:
+        except Exception, ex:
             if logging.getLogger().isEnabledFor(logging.DEBUG):
-                logging.exception("Exception connecting to socket.")
+                logging.exception("Exception connecting to socket: %s", str(ex))
 
-    def closeSocket(self):
+    def closeInfoSocket(self):
         logging.debug("Closing info socket.")
         self.info_socket.close()
         self.info_socket = None
+
+    def resetInfoSocket(self):
+        logging.debug("Resetting info socket.")
+        self.closeInfoSocket()
+        self.createInfoSocket()
 
     def getInfo(self, names):
         """Request info from ASD instance."""
@@ -181,9 +186,10 @@ class LeafLine:
                 rsp_data = receivedata(self.info_socket, sz)
             else:
                 rsp_data = None
-        except Exception:
+        except Exception, ex:
             if logging.getLogger().isEnabledFor(logging.DEBUG):
-                logging.exception("Exception with info request.")
+                logging.exception("Exception with info request: %s", str(ex))
+            self.resetInfoSocket()
             return -1
 
         if rsp_data == -1 or rsp_data is None:
@@ -202,14 +208,14 @@ class LeafLine:
         command = "log-message:message=%s;who=%s" % (message, "Aerospike Telemetry Agent")
         self.createInfoSocket()
         self.getInfo(command)
-        self.closeSocket()
+        self.closeInfoSocket()
 
     def connectedToService(self):
         # Check if the info command returns.
         try:
             self.createInfoSocket()
             statsStr = self.getInfo("service")
-            self.closeSocket()
+            self.closeInfoSocket()
             return check_statsStr(statsStr, "service")
         except:
             logging.debug("Failed trying to connect to server")
@@ -218,7 +224,7 @@ class LeafLine:
     def fetchInfo(self):
         self.createInfoSocket()
         infoMap = self.fetchInfoMain()
-        self.closeSocket()
+        self.closeInfoSocket()
         return infoMap
 
     def fetchInfoMain(self):
