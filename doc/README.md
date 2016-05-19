@@ -124,7 +124,7 @@ or
 
 	$ service aerospike_telemetry restart
 
-Under `systemd`-based distros (RedHat EL7-based distros (e.g., RHEL 7, CentOS 7, Fedora 15+) and Debian 8), use:
+Under `systemd`-based distros (RedHat EL7-based distros (e.g., RHEL 7, CentOS 7, Fedora 15+), Debian 8, and Ubuntu 16.04), use:
 
 	$ systemctl restart aerospike
 
