@@ -271,6 +271,13 @@ class LeafLine:
             except KeyError, e:
                 logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
+        # Server Version-Related Info
+        for field in ("features", "cluster-generation", "partition-generation", "edition", "version", "build"):
+            fields[field] = ""
+            statsStr = self.getInfo(field)
+            if check_statsStr(statsStr, field):
+                fields[field] = statsStr
+
         # Node
         statsStr = self.getInfo("node")
         if check_statsStr(statsStr, "node"):
@@ -334,17 +341,34 @@ class LeafLine:
             except KeyError, e:
                 logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
-        # Namespaces
+        # Namespaces and Bins
         namespaces = {}
+        bins = {}
         statsStr = self.getInfo("namespaces")
         if check_statsStr(statsStr, "namespaces"):
             namespace_names = statsStr.split(";")
             for ns in namespace_names:
                 statsStr = self.getInfo("namespace/" + ns)
-                if check_statsStr(statsStr, "namespace " + ns):
+                if check_statsStr(statsStr, "namespace/" + ns):
                     # Note:  Anonymize the namespace name.
-                    namespaces[anonymize_data(ns)] = semicolon_list_to_dict(statsStr)
+                    anonymized_ns = anonymize_data(ns)
+                    namespaces[anonymized_ns] = semicolon_list_to_dict(statsStr)
+                    statsStr = self.getInfo("bins/" + ns)
+                    if check_statsStr(statsStr, "bins/" + ns):
+                        bins[anonymized_ns] = {}
+                        if statsStr == "[single-bin]":
+                            bins[anonymized_ns]["single-bin"] = 'true'
+                        else:
+                            bins_data = filter(bool, statsStr.split(",", 2))
+                            if len(bins_data) >= 2:
+                                item = filter(bool, bins_data[0].split("="))
+                                if len(item) == 2 and item[0] == "num-bin-names":
+                                    bins[anonymized_ns][item[0]] = item[1]
+                                item = filter(bool, bins_data[1].split("="))
+                                if len(item) == 2 and item[0] == "bin-names-quota":
+                                    bins[anonymized_ns][item[0]] = item[1]
         fields['namespaces'] = namespaces
+        fields['bins'] = bins
 
         # Queries
         queries = {}
