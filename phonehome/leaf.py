@@ -467,6 +467,23 @@ class LeafLine:
                             system['CPU information'].append(name[1:])
             system['CPU information'].append(cpu.info)
             fields['system'] = system
+
+            # DMI (Desktop Management Interface)
+            dmi = {}
+            dmi_dir = "/sys/devices/virtual/dmi/id"
+            try:
+                for file in os.listdir(dmi_dir):
+                    try:
+                        with open(os.path.join(dmi_dir, file), "r") as infile:
+                            try:
+                                dmi[file] = infile.read().rstrip()
+                            except:
+                                pass
+                    except:
+                        pass
+            except:
+                pass
+            fields['dmi'] = dmi
         else:
             # Allow config. to be used above, but throw it away if it's not being sent.
             del fields['config']
