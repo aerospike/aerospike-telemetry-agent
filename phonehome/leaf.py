@@ -272,7 +272,7 @@ class LeafLine:
                 logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
         # Server Version-Related Info
-        for field in ("features", "cluster-generation", "partition-generation", "edition", "version", "build"):
+        for field in ("features", "cluster-generation", "partition-generation", "edition", "version", "build", "build_os", "build_time"):
             fields[field] = ""
             statsStr = self.getInfo(field)
             if check_statsStr(statsStr, field):
@@ -450,8 +450,12 @@ class LeafLine:
             fields['sets'] = sets
 
             # Host System Information
+            distro = platform.linux_distribution()
+            if (distro == ('', '', '')):
+                # Dig deeper for Amazon AMI.
+                distro = platform.linux_distribution(supported_dists=['system'])
             system = {'os-name': os.name,
-                      'linux_distribution': platform.linux_distribution(),
+                      'linux_distribution': distro,
                       'platform': sys.platform,
                       'uname': list(platform.uname())}
             # Anonymize node name.
