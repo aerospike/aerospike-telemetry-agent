@@ -229,6 +229,7 @@ class LeafLine:
 
     def fetchInfoMain(self):
         fields = {} # name , value hash of current statistics
+        log_key_err = lambda e: logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
         # Configuration
         statsStr = self.getInfo("get-config")
@@ -236,40 +237,40 @@ class LeafLine:
             fields['config'] = semicolon_list_to_dict(statsStr)
             # Anonymize certain fields (which are not guaranteed to exist.)
             try:
-                fields['config']['service-address'] = anonymize_data(fields['config']['service-address'])
+                fields['config']['service.address'] = anonymize_data(fields['config']['service.address'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+                log_key_err(e)
             try:
-                fields['config']['access-address'] = anonymize_data(fields['config']['access-address'])
+                fields['config']['service.access-address'] = anonymize_data(fields['config']['service.access-address'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+                log_key_err(e)
             try:
-                fields['config']['alternate-address'] = anonymize_data(fields['config']['alternate-address'])
+                fields['config']['service.alternate-address'] = anonymize_data(fields['config']['service.alternate-address'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+                log_key_err(e)
             try:
-                fields['config']['heartbeat-address'] = anonymize_data(fields['config']['heartbeat-address'])
+                fields['config']['heartbeat.address'] = anonymize_data(fields['config']['heartbeat.address'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+                log_key_err(e)
             try:
-                fields['config']['heartbeat-interface-address'] = anonymize_data(fields['config']['heartbeat-interface-address'])
+                fields['config']['heartbeat.interface-address'] = anonymize_data(fields['config']['heartbeat.interface-address'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+                log_key_err(e)
             try:
-                if fields['config']['mesh-seed-address-port']:
-                    statsStr = fields['config']['mesh-seed-address-port']
+                if fields['config']['heartbeat.mesh-seed-address-port']:
+                    statsStr = fields['config']['heartbeat.mesh-seed-address-port']
                     result = ""
                     for ip_port in statsStr.split(";"):
                         if result:
                             result += ";"
                         result += anonymize_ip_port(ip_port)
-                    fields['config']['mesh-seed-address-port'] = result
+                    fields['config']['heartbeat.mesh-seed-address-port'] = result
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+                log_key_err(e)
             try:
-                fields['config']['mesh-address'] = anonymize_data(fields['config']['mesh-address'])
+                fields['config']['heartbeat.mesh-address'] = anonymize_data(fields['config']['heartbeat.mesh-address'])
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+                log_key_err(e)
 
         # Server Version-Related Info
         for field in ("features", "cluster-generation", "partition-generation", "edition", "version", "build", "build_os", "build_time"):
@@ -339,11 +340,12 @@ class LeafLine:
             try:
                 fields['statistics']['paxos_principal'] = decode_node_id(fields['statistics']['paxos_principal'], ra)
             except KeyError, e:
-                logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
+                log_key_err(e)
 
-        # Namespaces and Bins
+        # Namespaces, Bins, and Histograms
         namespaces = {}
         bins = {}
+        histograms = {}
         statsStr = self.getInfo("namespaces")
         if check_statsStr(statsStr, "namespaces"):
             namespace_names = statsStr.split(";")
@@ -352,7 +354,9 @@ class LeafLine:
                 if check_statsStr(statsStr, "namespace/" + ns):
                     # Note:  Anonymize the namespace name.
                     anonymized_ns = anonymize_data(ns)
-                    namespaces[anonymized_ns] = semicolon_list_to_dict(statsStr)
+                    ns_braces = "{" + ns + "}"
+                    anonymized_ns_braces = "{" + anonymized_ns + "}"
+                    namespaces[anonymized_ns] = semicolon_list_to_dict(statsStr.replace(ns_braces, anonymized_ns_braces))
                     statsStr = self.getInfo("bins/" + ns)
                     if check_statsStr(statsStr, "bins/" + ns):
                         bins[anonymized_ns] = {}
@@ -362,23 +366,21 @@ class LeafLine:
                             bins_data = filter(bool, statsStr.split(",", 2))
                             if len(bins_data) >= 2:
                                 item = filter(bool, bins_data[0].split("="))
-                                if len(item) == 2 and item[0] == "num-bin-names":
+                                if len(item) == 2 and item[0] == "bin_names":
                                     bins[anonymized_ns][item[0]] = item[1]
                                 item = filter(bool, bins_data[1].split("="))
-                                if len(item) == 2 and item[0] == "bin-names-quota":
+                                if len(item) == 2 and item[0] == "bin_names_quota":
                                     bins[anonymized_ns][item[0]] = item[1]
+                    histograms[anonymized_ns] = {}
+                    for hist_cmd in ("latency", "throughput"):
+                        histograms[anonymized_ns][hist_cmd] = {}
+                        for hist_name in ("query", "read", "udf", "write"):
+                            statsStr = self.getInfo(hist_cmd + ":hist=" + ns_braces + "-" + hist_name)
+                            if check_statsStr(statsStr, hist_cmd + " hist " + hist_name):
+                                histograms[anonymized_ns][hist_cmd][hist_name] = statsStr.replace(ns_braces, anonymized_ns_braces, 1)
         fields['namespaces'] = namespaces
         fields['bins'] = bins
-
-        # Queries
-        queries = {}
-        statsStr = self.getInfo("throughput:hist=query")
-        if check_statsStr(statsStr, "throughput hist"):
-            queries['throughput'] = statsStr
-        statsStr = self.getInfo("latency:hist=query")
-        if check_statsStr(statsStr, "latency hist"):
-            queries['latency'] = statsStr
-        fields['queries'] = queries
+        fields['histograms'] = histograms
 
         # UDFs
         udfs = {}
@@ -443,7 +445,7 @@ class LeafLine:
                     for field in set_fields_kv:
                         k, v = field.split("=")
                         # Anonymize certain fields.
-                        if k in ('ns_name', 'set_name'):
+                        if k in ('ns', 'set'):
                             v = anonymize_data(v)
                         set_fields[k] = v
                     sets.append(set_fields)
