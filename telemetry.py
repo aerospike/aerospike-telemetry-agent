@@ -21,6 +21,7 @@ if __name__ == "__main__":
     optparser.add_option("--set-loglevel", dest="loglevel", type="string", metavar="<LOGLEVEL>", help="Set log level.")
     optparser.add_option("--set-proxy", dest="proxy", type="string", metavar="<PROXY>", help="Set HTTPS proxy.")
     optparser.add_option("--set-user", dest="user", type="string", metavar="<USER>", help="Set daemon user.")
+    optparser.add_option("--sample", dest="sample", action="store_true", default=False, help="Sample data once and print the result.")
     (options, args) = optparser.parse_args()
 
     # Args.
@@ -31,7 +32,7 @@ if __name__ == "__main__":
     config_filename = args[0]
 
     # Read configuration file.
-    defaults = {'cafile': None, 'email': None, 'fgdaemon': False, 'group': None, 'proxy': None, 'user': None}
+    defaults = {'cafile': None, 'email': None, 'fgdaemon': False, 'group': None, 'proxy': None, 'user': None, 'sample': False}
     config = ConfigParser.SafeConfigParser(defaults = defaults)
     try:
         with open(config_filename, 'r') as config_fd:
@@ -79,6 +80,10 @@ if __name__ == "__main__":
         if options.user:
             config.set('main', 'user', options.user)
             edit_config = True
+        if options.sample:
+            config.set('main', 'sample', 'true')
+            config.set('logging', 'logfile', 'out')
+            config.set('logging', 'loglevel', 'info')
         if edit_config:
             with open(args[0], 'wb') as cf:
                 config.write(cf)
@@ -105,7 +110,8 @@ if __name__ == "__main__":
             'fgdaemon': config.getboolean('main', 'fgdaemon'),
             'group': config.get('main', 'group'),
             'proxy': config.get('main', 'proxy'),
-            'user': config.get('main', 'user')}
+            'user': config.get('main', 'user'),
+            'sample': config.get('main', 'sample')}
     except ConfigParser.NoOptionError, ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nInvalid configuration file [%s] -- Option not found [%s]\n" % (config_filename, str(ex)))

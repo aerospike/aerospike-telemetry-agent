@@ -2,6 +2,7 @@
 
 import sys
 import time
+import pprint
 import logging
 
 from parser import Parser
@@ -80,18 +81,20 @@ class TelemetryAgent:
 
         # Get leaf connection.
         self.leafConnection = LeafLine(configParser.port, self.leafAddress)
+
+        if self.options['sample']:
+            infoMap = self.get_info()
+            if infoMap:
+                logging.info("infoMap = %s", pprint.pformat(infoMap, indent=2))
+            else:
+                logging.warning("No info. returned from ASD!")
+            return
+
         self.wait_for_leaf_connection(True)
 
         # Collect data.
         while True:
-            try:
-                infoMap = self.leafConnection.fetchInfo()
-            except:
-                logging.warning("Cannot contact ASD.")
-                if logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.exception("Unexpected error fetching info from ASD.")
-                infoMap = None
-
+            infoMap = self.get_info()
             if infoMap:
                 self.phonehome(infoMap)
             else:
@@ -104,3 +107,13 @@ class TelemetryAgent:
                 self.wait_for_leaf_connection()
 
             time.sleep(self.options['interval'])
+
+    def get_info(self):
+        try:
+            infoMap = self.leafConnection.fetchInfo()
+        except:
+            logging.warning("Cannot contact ASD.")
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                logging.exception("Unexpected error fetching info from ASD.")
+            infoMap = None
+        return infoMap
