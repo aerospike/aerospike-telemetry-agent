@@ -8,6 +8,7 @@ import struct
 import sys
 
 from cpuinfo import cpu, cpuinfo
+from distutils.version import LooseVersion
 
 #--------------------------------------------------------------------------------
 # ENUMS
@@ -22,6 +23,14 @@ class RACK_AWARE_T:
 
 def anonymize_data(data):
     return str(hashlib.md5(data).hexdigest())
+
+def anonymize_list(list, delimiter):
+    result = ""
+    for datum in filter(bool, list.split(delimiter)):
+        if result:
+            result += delimiter
+        result += anonymize_data(datum)
+    return result
 
 def my_ip_addr():
     """
@@ -55,6 +64,14 @@ def anonymize_ip_port(ip_port_pair):
                 logging.exception("Problem parsing ip/port pair.")
         else:
             return anonymize_data(ip) + ":" + str(port)
+
+def anonymize_ip_port_list(ip_port_list, delimiter):
+    result = ""
+    for ip_port in filter(bool, ip_port_list.split(delimiter)):
+        if result:
+            result += delimiter
+        result += anonymize_ip_port(ip_port)
+    return result
 
 def decode_ip_addr(ipaddr):
     """Convert 32-bit numeric IPv4 address to string of 4 dot-separated octets."""
@@ -133,6 +150,43 @@ def receivedata(sock, sz):
             data += chunk
         pos += len(chunk)
     return data
+
+# Anonymize certain fields (which are not guaranteed to exist.)
+
+def anonymizeConfigPre3_9(fields, log_key_err):
+    for prop in ("service", "access", "alternate", "heartbeat", "heartbeat-interface", "mesh"):
+        try:
+            field_name = prop + '-address'
+            fields['config'][field_name] = anonymize_data(fields['config'][field_name])
+        except KeyError, e:
+            log_key_err(e)
+    anonymizeMesh(fields, log_key_err, "")
+
+def anonymizeConfig3_9(fields, log_key_err):
+    for ctx, props in (("service", ("", "access-", "alternate-")), ("heartbeat", ("", "interface-", "mesh-"))):
+        for prop in props:
+            try:
+                field_name = ctx + '.' + prop + 'address'
+                fields['config'][field_name] = anonymize_data(fields['config'][field_name])
+            except KeyError, e:
+                log_key_err(e)
+    anonymizeMesh(fields, log_key_err, "heartbeat.")
+
+def anonymizeConfig3_10(fields, log_key_err):
+    if fields['config']['heartbeat.mode'] == "multicast":
+        field_name = "heartbeat.multicast-groups"
+        fields['config'][field_name] = anonymize_ip_port_list(fields['config'][field_name], ',')
+    field_name = "heartbeat.addresses"
+    fields['config'][field_name] = anonymize_list(fields['config'][field_name], ',')
+    anonymizeMesh(fields, log_key_err, "heartbeat.")
+
+def anonymizeMesh(fields, log_key_err, pfx):
+    try:
+        field_name = pfx + 'mesh-seed-address-port'
+        if fields['config'][field_name]:
+            fields['config'][field_name] = anonymize_ip_port_list(fields['config'][field_name], ';')
+    except KeyError, e:
+        log_key_err(e)
 
 #--------------------------------------------------------------------------------
 # LEAFLINE
@@ -231,53 +285,24 @@ class LeafLine:
         fields = {} # name , value hash of current statistics
         log_key_err = lambda e: logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
-        # Configuration
-        statsStr = self.getInfo("get-config")
-        if check_statsStr(statsStr, "config"):
-            fields['config'] = semicolon_list_to_dict(statsStr)
-            # Anonymize certain fields (which are not guaranteed to exist.)
-            try:
-                fields['config']['service.address'] = anonymize_data(fields['config']['service.address'])
-            except KeyError, e:
-                log_key_err(e)
-            try:
-                fields['config']['service.access-address'] = anonymize_data(fields['config']['service.access-address'])
-            except KeyError, e:
-                log_key_err(e)
-            try:
-                fields['config']['service.alternate-address'] = anonymize_data(fields['config']['service.alternate-address'])
-            except KeyError, e:
-                log_key_err(e)
-            try:
-                fields['config']['heartbeat.address'] = anonymize_data(fields['config']['heartbeat.address'])
-            except KeyError, e:
-                log_key_err(e)
-            try:
-                fields['config']['heartbeat.interface-address'] = anonymize_data(fields['config']['heartbeat.interface-address'])
-            except KeyError, e:
-                log_key_err(e)
-            try:
-                if fields['config']['heartbeat.mesh-seed-address-port']:
-                    statsStr = fields['config']['heartbeat.mesh-seed-address-port']
-                    result = ""
-                    for ip_port in statsStr.split(";"):
-                        if result:
-                            result += ";"
-                        result += anonymize_ip_port(ip_port)
-                    fields['config']['heartbeat.mesh-seed-address-port'] = result
-            except KeyError, e:
-                log_key_err(e)
-            try:
-                fields['config']['heartbeat.mesh-address'] = anonymize_data(fields['config']['heartbeat.mesh-address'])
-            except KeyError, e:
-                log_key_err(e)
-
         # Server Version-Related Info
         for field in ("features", "cluster-generation", "partition-generation", "edition", "version", "build", "build_os", "build_time"):
             fields[field] = ""
             statsStr = self.getInfo(field)
             if check_statsStr(statsStr, field):
                 fields[field] = statsStr
+
+        # Configuration
+        statsStr = self.getInfo("get-config")
+        if check_statsStr(statsStr, "config"):
+            fields['config'] = semicolon_list_to_dict(statsStr)
+            buildVersion = LooseVersion(fields['build'])
+            if buildVersion < LooseVersion("3.9"):
+                anonymizeConfigPre3_9(fields, log_key_err)
+            elif buildVersion < LooseVersion("3.9.1-145"): # 3.10
+                anonymizeConfig3_9(fields, log_key_err)
+            else:
+                anonymizeConfig3_10(fields, log_key_err)
 
         # Node
         statsStr = self.getInfo("node")
@@ -301,6 +326,10 @@ class LeafLine:
                 if fields['succession-list']:
                     fields['succession-list'] += ','
                 fields['succession-list'] += decode_node_id(node_id, ra)
+        fields['cluster-name'] = ""
+        statsStr = self.getInfo("cluster-name")
+        if check_statsStr(statsStr, "cluster name"):
+            fields['cluster-name'] = anonymize_data(fields['cluster-name'])
 
         # Service(s)
         fields['service'] = ""
