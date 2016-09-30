@@ -173,11 +173,15 @@ def anonymizeConfig3_9(fields, log_key_err):
     anonymizeMesh(fields, log_key_err, "heartbeat.")
 
 def anonymizeConfig3_10(fields, log_key_err):
+    for ctx in ("service", "heartbeat"):
+        try:
+            field_name = ctx + '.address'
+            fields['config'][field_name] = anonymize_data(fields['config'][field_name])
+        except KeyError, e:
+            log_key_err(e)
     if fields['config']['heartbeat.mode'] == "multicast":
-        field_name = "heartbeat.multicast-groups"
-        fields['config'][field_name] = anonymize_ip_port_list(fields['config'][field_name], ',')
-    field_name = "heartbeat.addresses"
-    fields['config'][field_name] = anonymize_list(fields['config'][field_name], ',')
+        field_name = "heartbeat.multicast-group"
+        fields['config'][field_name] = anonymize_list(fields['config'][field_name], ';')
     anonymizeMesh(fields, log_key_err, "heartbeat.")
 
 def anonymizeMesh(fields, log_key_err, pfx):
@@ -299,7 +303,7 @@ class LeafLine:
             buildVersion = LooseVersion(fields['build'])
             if buildVersion < LooseVersion("3.9"):
                 anonymizeConfigPre3_9(fields, log_key_err)
-            elif buildVersion < LooseVersion("3.9.1-145"): # 3.10
+            elif buildVersion < LooseVersion("3.9.1-166"): # 3.10
                 anonymizeConfig3_9(fields, log_key_err)
             else:
                 anonymizeConfig3_10(fields, log_key_err)
