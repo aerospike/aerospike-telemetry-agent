@@ -180,8 +180,11 @@ def anonymizeConfig3_10(fields, log_key_err):
         except KeyError, e:
             log_key_err(e)
     if fields['config']['heartbeat.mode'] == "multicast":
-        field_name = "heartbeat.multicast-group"
-        fields['config'][field_name] = anonymize_list(fields['config'][field_name], ';')
+        try:
+            field_name = "heartbeat.multicast-group"
+            fields['config'][field_name] = anonymize_list(fields['config'][field_name], ';')
+        except KeyError, e:
+            log_key_err(e)
     anonymizeMesh(fields, log_key_err, "heartbeat.")
 
 def anonymizeMesh(fields, log_key_err, pfx):
