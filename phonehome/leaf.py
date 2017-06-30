@@ -179,13 +179,16 @@ def anonymizeConfig3_10(fields, log_key_err):
             fields['config'][field_name] = anonymize_data(fields['config'][field_name])
         except KeyError, e:
             log_key_err(e)
-    if fields['config']['heartbeat.mode'] == "multicast":
-        try:
-            field_name = "heartbeat.multicast-group"
-            fields['config'][field_name] = anonymize_list(fields['config'][field_name], ';')
-        except KeyError, e:
-            log_key_err(e)
-    anonymizeMesh(fields, log_key_err, "heartbeat.")
+    try:
+        if fields['config']['heartbeat.mode'] == "multicast":
+            try:
+                field_name = "heartbeat.multicast-group"
+                fields['config'][field_name] = anonymize_list(fields['config'][field_name], ';')
+            except KeyError, e:
+                log_key_err(e)
+                anonymizeMesh(fields, log_key_err, "heartbeat.")
+    except KeyError, e:
+        log_key_err(e)
 
 def anonymizeMesh(fields, log_key_err, pfx):
     try:
@@ -315,13 +318,16 @@ class LeafLine:
         statsStr = self.getInfo("node")
         if check_statsStr(statsStr, "node"):
             ra = RACK_AWARE_T.NOT_RA
-            if fields['config']['paxos-protocol'] == 'v4': # Check if rack aware.
-                if fields['config']['mode'] == 'static':
-                    ra = RACK_AWARE_T.STATIC
-                elif fields['config']['mode'] == 'dynamic':
-                    ra = RACK_AWARE_T.DYNAMIC
-                else: # Unknown mode
-                    logging.info("Unknown mode [%s]", fields['config']['mode'])
+            try:
+                if fields['config']['paxos-protocol'] == 'v4': # Check if rack aware.
+                    if fields['config']['mode'] == 'static':
+                        ra = RACK_AWARE_T.STATIC
+                    elif fields['config']['mode'] == 'dynamic':
+                        ra = RACK_AWARE_T.DYNAMIC
+                    else: # Unknown mode
+                        logging.info("Unknown mode [%s]", fields['config']['mode'])
+            except KeyError, e:
+                log_key_err(e)
             fields['node'] = decode_node_id(statsStr, ra)
             logging.info("Contacted local node: %s" % (fields['node']))
 
