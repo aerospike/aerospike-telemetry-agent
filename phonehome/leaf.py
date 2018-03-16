@@ -186,7 +186,7 @@ def anonymizeConfig3_10(fields, log_key_err):
                 fields['config'][field_name] = anonymize_list(fields['config'][field_name], ';')
             except KeyError, e:
                 log_key_err(e)
-                anonymizeMesh(fields, log_key_err, "heartbeat.")
+        anonymizeMesh(fields, log_key_err, "heartbeat.")
     except KeyError, e:
         log_key_err(e)
 
