@@ -296,7 +296,7 @@ class LeafLine:
         log_key_err = lambda e: logging.debug('key error on [%s] encountered while attempting to anonymize data', str(e))
 
         # Server Version-Related Info
-        for field in ("features", "cluster-generation", "partition-generation", "edition", "version", "build", "build_os", "build_time"):
+        for field in ("features", "partition-generation", "edition", "version", "build", "build_os", "build_time"):
             fields[field] = ""
             statsStr = self.getInfo(field)
             if check_statsStr(statsStr, field):
