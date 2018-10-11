@@ -190,6 +190,13 @@ def anonymizeConfig3_10(fields, log_key_err):
     except KeyError, e:
         log_key_err(e)
 
+def anonymizeConfig3_16(fields, log_key_err):
+    try:
+        fields['config']['node-id'] = anonymize_data(fields['config']['node-id'])
+    except KeyError, e:
+        log_key_err(e)
+
+
 def anonymizeMesh(fields, log_key_err, pfx):
     try:
         field_name = pfx + 'mesh-seed-address-port'
@@ -313,6 +320,8 @@ class LeafLine:
                 anonymizeConfig3_9(fields, log_key_err)
             else:
                 anonymizeConfig3_10(fields, log_key_err)
+                if buildVersion >= LooseVersion("3.16"):
+                    anonymizeConfig3_16(fields, log_key_err)
 
         # Node
         statsStr = self.getInfo("node")
