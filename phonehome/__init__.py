@@ -8,7 +8,7 @@ import sys
 # Module variables
 #--------------------------------------------------------------------------------
 
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 HOMEURLPATH = ":8192/telemetry/v1"
 LOGFILETEXT = "Aerospike anonymous data collection is %s. For further information, see http://aerospike.com/aerospike-telemetry"
 

@@ -390,6 +390,7 @@ class LeafLine:
             # Anonymize certain fields.
             try:
                 fields['statistics']['paxos_principal'] = decode_node_id(fields['statistics']['paxos_principal'], ra)
+                fields['statistics']['cluster_principal'] = decode_node_id(fields['statistics']['cluster_principal'], ra)
             except KeyError, e:
                 log_key_err(e)
 
