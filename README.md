@@ -24,19 +24,19 @@ To disable (or enable) the Telemetry Agent, change the `disable` value in the co
 
 If the server was installed via DEB or RPM package, run:
 
-	$ python /opt/aerospike/telemetry/telemetry.py /etc/aerospike/telemetry.conf --disable
+	$ /opt/aerospike/telemetry/telemetry.py /etc/aerospike/telemetry.conf --disable
 
 or
 
-	$ python /opt/aerospike/telemetry/telemetry.py /etc/aerospike/telemetry.conf --enable
+	$ /opt/aerospike/telemetry/telemetry.py /etc/aerospike/telemetry.conf --enable
 
 If you're running from within the repository, run:
 
-	$ python <repo path>/modules/telemetry/telemetry.py <repo path>/as/etc/telemetry_dev.conf --disable
+	$ <repo path>/modules/telemetry/telemetry.py <repo path>/as/etc/telemetry_dev.conf --disable
 
 or
 
-	$ python <repo path>/modules/telemetry/telemetry.py <repo path>/as/etc/telemetry_dev.conf --enable
+	$ <repo path>/modules/telemetry/telemetry.py <repo path>/as/etc/telemetry_dev.conf --enable
 
 ### Making the Change Take Effect
 
@@ -50,7 +50,7 @@ or
 
 	$ service aerospike_telemetry restart
 
-Under `systemd`-based distros (RedHat EL7-based distros (e.g., RHEL 7, CentOS 7, Fedora 15+), Debian 8, and Ubuntu 16.04), use:
+Under `systemd`-based distros (RedHat EL7+-based distros (e.g., RHEL 7+, CentOS 7+, Fedora 15+), Debian 8+, and Ubuntu 16+), use:
 
 	$ systemctl restart aerospike
 

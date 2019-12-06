@@ -1,6 +1,16 @@
-#!/usr/bin/python
+#!/bin/sh
+""":"
+for interp in python3 python python2 ; do
+   command -v > /dev/null "$interp" && exec "$interp" "$0" "$@"
+done
+echo >&2 "No Python interpreter found!"
+exit 1
+":"""
 import sys
-import ConfigParser
+try:
+    import ConfigParser as configparser
+except:
+    import configparser
 from optparse import OptionParser
 
 from phonehome import init, run
@@ -33,11 +43,11 @@ if __name__ == "__main__":
 
     # Read configuration file.
     defaults = {'cafile': None, 'email': None, 'fgdaemon': False, 'group': None, 'proxy': None, 'user': None, 'sample': False}
-    config = ConfigParser.SafeConfigParser(defaults = defaults)
+    config = configparser.SafeConfigParser(defaults = defaults)
     try:
         with open(config_filename, 'r') as config_fd:
             config.readfp(config_fd)
-    except Exception, ex:
+    except Exception as ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nCould not parse configuration file [%s] --- [%s]\n" % (config_filename, str(ex)))
         sys.exit(0)
@@ -89,7 +99,7 @@ if __name__ == "__main__":
                 config.write(cf)
             sys.stdout.write("Configuration file [%s] successfully changed.\n" % config_filename)
             exit(0)
-    except Exception, ex:
+    except Exception as ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nError writing to configuration file [%s]\n" % str(ex))
         sys.exit(2)
@@ -112,15 +122,15 @@ if __name__ == "__main__":
             'proxy': config.get('main', 'proxy'),
             'user': config.get('main', 'user'),
             'sample': config.get('main', 'sample')}
-    except ConfigParser.NoOptionError, ex:
+    except configparser.NoOptionError as ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nInvalid configuration file [%s] -- Option not found [%s]\n" % (config_filename, str(ex)))
         sys.exit(2)
-    except ConfigParser.NoSectionError, ex:
+    except configparser.NoSectionError as ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nInvalid configuration file [%s] -- Section not found [%s]\n" % (config_filename, str(ex)))
         sys.exit(2)
-    except Exception, ex:
+    except Exception as ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nInvalid configuration file [%s] -- Error [%s]\n" % (config_filename, str(ex)))
         sys.exit(2)

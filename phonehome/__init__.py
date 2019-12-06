@@ -8,7 +8,7 @@ import sys
 # Module variables
 #--------------------------------------------------------------------------------
 
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 HOMEURLPATH = ":8192/telemetry/v1"
 LOGFILETEXT = "Aerospike anonymous data collection is %s. For further information, see http://aerospike.com/aerospike-telemetry"
 
@@ -16,8 +16,12 @@ LOGFILETEXT = "Aerospike anonymous data collection is %s. For further informatio
 # Imports
 #--------------------------------------------------------------------------------
 
-from urlparse import urlparse
-from driver import TelemetryAgent
+try:
+    from urlparse import urlparse
+except:
+    from urllib.parse import urlparse
+
+from .driver import TelemetryAgent
 
 #--------------------------------------------------------------------------------
 # Global vars
@@ -42,6 +46,7 @@ def init(options):
     else:
         logging.basicConfig(format=logFormat, datefmt=datefmt, filename=options['logfile'], level=LEVELS.get(options['loglevel']))
     logging.info("Aerospike Telemetry Agent %s initialized.", __version__)
+    logging.info("Python version: %s", sys.version)
 
 def run(options):
     # Validate url.

@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+from __future__ import print_function
 ###################################################################
 #  cpuinfo - Get information about CPU
 #
@@ -26,14 +25,16 @@ __all__ = ['cpu']
 
 import sys, re, types
 import os
-import commands
+import subprocess
 import warnings
 import platform
 
 def getoutput(cmd, successful_status=(0,), stacklevel=1):
     try:
-        status, output = commands.getstatusoutput(cmd)
-    except EnvironmentError, e:
+        proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+        output, errors = proc.communicate()
+        status = proc.returncode
+    except EnvironmentError as e:
         warnings.warn(str(e), UserWarning, stacklevel=stacklevel)
         return False, ''
     if os.WIFEXITED(status) and os.WEXITSTATUS(status) in successful_status:
@@ -86,7 +87,7 @@ class CPUInfoBase(object):
                     return lambda func=self._try_call,attr=attr : func(attr)
             else:
                 return lambda : None
-        raise AttributeError,name
+        raise AttributeError(name)
 
     def _getNCPUs(self):
         return 1
@@ -112,10 +113,10 @@ class LinuxCPUInfo(CPUInfoBase):
         info = [ {} ]
         ok, output = getoutput('uname -m')
         if ok:
-            info[0]['uname_m'] = output.strip()
+            info[0]['uname_m'] = str(output.strip().decode('utf-8'))
         try:
             fo = open('/proc/cpuinfo')
-        except EnvironmentError, e:
+        except EnvironmentError as e:
             warnings.warn(str(e), UserWarning)
         else:
             for line in fo:
@@ -519,7 +520,7 @@ class Win32CPUInfo(CPUInfoBase):
                                     info[-1]["Model"]=int(srch.group("MDL"))
                                     info[-1]["Stepping"]=int(srch.group("STP"))
         except:
-            print sys.exc_value,'(ignoring)'
+            print(sys.exc_value, '(ignoring)')
         self.__class__.info = info
 
     def _not_impl(self): pass
@@ -676,13 +677,13 @@ if __name__ == "__main__":
     cpu.is_Intel()
     cpu.is_Alpha()
 
-    print 'CPU information:',
+    print('CPU information:', end=' ')
     for name in dir(cpuinfo):
         if name[0]=='_' and name[1]!='_':
             r = getattr(cpu,name[1:])()
             if r:
                 if r!=1:
-                    print '%s=%s' %(name[1:],r),
+                    print('%s=%s' %(name[1:],r), end=' ')
                 else:
-                    print name[1:],
-    print
+                    print(name[1:], end=' ')
+    print()

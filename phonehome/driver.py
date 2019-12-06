@@ -1,13 +1,11 @@
-#!/usr/bin/python
-
 import sys
 import time
 import pprint
 import logging
 
-from parser import Parser
-from home import HomeLine
-from leaf import LeafLine, anonymize_my_ip_addr
+from .parser import Parser
+from .home import HomeLine
+from .leaf import LeafLine, anonymize_my_ip_addr
 from . import __version__ as version
 from . import HOMEURLPATH as homeUrlPath
 from . import LOGFILETEXT as logFileText
@@ -85,7 +83,7 @@ class TelemetryAgent:
         if self.options['sample']:
             infoMap = self.get_info()
             if infoMap:
-                logging.info("infoMap = %s", pprint.pformat(infoMap, indent=2))
+                logging.info("infoMap = %s", pprint.pformat(infoMap, indent=2, width=1000))
             else:
                 logging.warning("No info. returned from ASD!")
             return
@@ -111,8 +109,9 @@ class TelemetryAgent:
     def get_info(self):
         try:
             infoMap = self.leafConnection.fetchInfo()
-        except:
+        except Exception as ex:
             logging.warning("Cannot contact ASD.")
+            logging.exception("Exception: " + str(ex))
             if logging.getLogger().isEnabledFor(logging.DEBUG):
                 logging.exception("Unexpected error fetching info from ASD.")
             infoMap = None

@@ -7,7 +7,7 @@ import socket
 import struct
 import sys
 
-from cpuinfo import cpu, cpuinfo
+from .cpuinfo import cpu, cpuinfo
 from distutils.version import LooseVersion
 
 #--------------------------------------------------------------------------------
@@ -22,7 +22,7 @@ class RACK_AWARE_T:
 #--------------------------------------------------------------------------------
 
 def anonymize_data(data):
-    return str(hashlib.md5(data).hexdigest())
+    return str(hashlib.md5(data.encode('utf-8')).hexdigest())
 
 def anonymize_list(list, delimiter):
     result = ""
@@ -104,7 +104,7 @@ def decode_node_id(node_id, ra):
     if ra == RACK_AWARE_T.NOT_RA:
         # Get MAC address
         MAC = nid[14:16]
-        for i in xrange(12,3,-2):
+        for i in range(12,3,-2):
             MAC += ':' + nid[i:i+2].upper()
         return port + ':' + anonymize_data(MAC)
     elif ra > RACK_AWARE_T.NOT_RA: # Rack Aware formats
@@ -158,7 +158,7 @@ def anonymizeConfigPre3_9(fields, log_key_err):
         try:
             field_name = prop + '-address'
             fields['config'][field_name] = anonymize_data(fields['config'][field_name])
-        except KeyError, e:
+        except KeyError as e:
             log_key_err(e)
     anonymizeMesh(fields, log_key_err, "")
 
@@ -168,7 +168,7 @@ def anonymizeConfig3_9(fields, log_key_err):
             try:
                 field_name = ctx + '.' + prop + 'address'
                 fields['config'][field_name] = anonymize_data(fields['config'][field_name])
-            except KeyError, e:
+            except KeyError as e:
                 log_key_err(e)
     anonymizeMesh(fields, log_key_err, "heartbeat.")
 
@@ -177,23 +177,23 @@ def anonymizeConfig3_10(fields, log_key_err):
         try:
             field_name = ctx + '.address'
             fields['config'][field_name] = anonymize_data(fields['config'][field_name])
-        except KeyError, e:
+        except KeyError as e:
             log_key_err(e)
     try:
         if fields['config']['heartbeat.mode'] == "multicast":
             try:
                 field_name = "heartbeat.multicast-group"
                 fields['config'][field_name] = anonymize_list(fields['config'][field_name], ';')
-            except KeyError, e:
+            except KeyError as e:
                 log_key_err(e)
         anonymizeMesh(fields, log_key_err, "heartbeat.")
-    except KeyError, e:
+    except KeyError as e:
         log_key_err(e)
 
 def anonymizeConfig3_16(fields, log_key_err):
     try:
         fields['config']['node-id'] = anonymize_data(fields['config']['node-id'])
-    except KeyError, e:
+    except KeyError as e:
         log_key_err(e)
 
 
@@ -202,7 +202,7 @@ def anonymizeMesh(fields, log_key_err, pfx):
         field_name = pfx + 'mesh-seed-address-port'
         if fields['config'][field_name]:
             fields['config'][field_name] = anonymize_ip_port_list(fields['config'][field_name], ';')
-    except KeyError, e:
+    except KeyError as e:
         log_key_err(e)
 
 #--------------------------------------------------------------------------------
@@ -224,7 +224,7 @@ class LeafLine:
             self.info_socket.settimeout(0.5)
             logging.debug("About to connect to info socket.")
             self.info_socket.connect((self.host, int(self.port)))
-        except Exception, ex:
+        except Exception as ex:
             if logging.getLogger().isEnabledFor(logging.DEBUG):
                 logging.exception("Exception connecting to socket: %s", str(ex))
 
@@ -243,7 +243,7 @@ class LeafLine:
         # Passed a name: created output buffer
         q = (2 << 56) | (1 << 48) | (len(names) + 1)
         fmtStr = "! Q %ds B" % len(names)
-        buf = struct.pack(fmtStr, q, names, 10 )
+        buf = struct.pack(fmtStr, q, names.encode('utf-8'), 10)
 
         # request over TCP
         try:
@@ -257,7 +257,7 @@ class LeafLine:
                 rsp_data = receivedata(self.info_socket, sz)
             else:
                 rsp_data = None
-        except Exception, ex:
+        except Exception as ex:
             if logging.getLogger().isEnabledFor(logging.DEBUG):
                 logging.exception("Exception with info request: %s", str(ex))
             self.resetInfoSocket()
@@ -267,7 +267,7 @@ class LeafLine:
             logging.debug("No response data.")
             return -1
 
-        lines = rsp_data.split("\n")
+        lines = str(rsp_data.decode('utf-8')).split("\n")
         name, sep, value = lines[0].partition("\t")
 
         if name != names:
@@ -335,7 +335,7 @@ class LeafLine:
                         ra = RACK_AWARE_T.DYNAMIC
                     else: # Unknown mode
                         logging.info("Unknown mode [%s]", fields['config']['mode'])
-            except KeyError, e:
+            except KeyError as  e:
                 log_key_err(e)
             fields['node'] = decode_node_id(statsStr, ra)
             logging.info("Contacted local node: %s" % (fields['node']))
@@ -391,7 +391,7 @@ class LeafLine:
             try:
                 fields['statistics']['paxos_principal'] = decode_node_id(fields['statistics']['paxos_principal'], ra)
                 fields['statistics']['cluster_principal'] = decode_node_id(fields['statistics']['cluster_principal'], ra)
-            except KeyError, e:
+            except KeyError as  e:
                 log_key_err(e)
 
         # Namespaces, Bins, and Histograms
@@ -415,12 +415,12 @@ class LeafLine:
                         if statsStr == "[single-bin]":
                             bins[anonymized_ns]["single-bin"] = 'true'
                         else:
-                            bins_data = filter(bool, statsStr.split(",", 2))
+                            bins_data = list(filter(bool, statsStr.split(",", 2)))
                             if len(bins_data) >= 2:
-                                item = filter(bool, bins_data[0].split("="))
+                                item = list(filter(bool, bins_data[0].split("=")))
                                 if len(item) == 2 and item[0] == "bin_names":
                                     bins[anonymized_ns][item[0]] = item[1]
-                                item = filter(bool, bins_data[1].split("="))
+                                item = list(filter(bool, bins_data[1].split("=")))
                                 if len(item) == 2 and item[0] == "bin_names_quota":
                                     bins[anonymized_ns][item[0]] = item[1]
                     histograms[anonymized_ns] = {}
@@ -437,8 +437,9 @@ class LeafLine:
         # UDFs
         udfs = {}
         statsStr = self.getInfo("udf-list")
-        udfs['num-udf-files'] = str(len(filter(bool, statsStr.split(";"))))
-        fields['udfs'] = udfs
+        if check_statsStr(statsStr, "udf-list"):
+            udfs['num-udf-files'] = str(len(list(filter(bool, statsStr.split(";")))))
+            fields['udfs'] = udfs
 
         # Memory
         with open("/proc/meminfo", "r") as infile:
@@ -451,7 +452,8 @@ class LeafLine:
         fields['meminfo'] = meminfo
 
         prev_asd_uptime = self.asd_uptime
-        self.asd_uptime = int(fields['statistics']['uptime'])
+        if check_statsStr(statsStr, "uptime"):
+            self.asd_uptime = int(fields['statistics']['uptime'])
 
         # Send additional infrequently-changing or potentially verbose data
         # whenever either the Telemetry Agent or Aerospike Server is restarted,
@@ -512,6 +514,7 @@ class LeafLine:
                       'linux_distribution': distro,
                       'platform': sys.platform,
                       'uname': list(platform.uname())}
+            system['python_version'] = sys.version
             # Anonymize node name.
             system['uname'][1] = anonymize_data(system['uname'][1])
             system['CPU information'] = []
