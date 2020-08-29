@@ -424,7 +424,11 @@ class LeafLine:
                                 if len(item) == 2 and item[0] == "bin_names_quota":
                                     bins[anonymized_ns][item[0]] = item[1]
                     histograms[anonymized_ns] = {}
-                    for hist_cmd in ("latency", "throughput"):
+                    if LooseVersion(fields['build']) >= LooseVersion("5.2"):
+                        hist_cmds = ["latencies"]
+                    else:
+                        hist_cmds = ["latency", "throughput"]
+                    for hist_cmd in hist_cmds:
                         histograms[anonymized_ns][hist_cmd] = {}
                         for hist_name in ("query", "read", "udf", "write"):
                             statsStr = self.getInfo(hist_cmd + ":hist=" + ns_braces + "-" + hist_name)
