@@ -335,7 +335,7 @@ class LeafLine:
                         ra = RACK_AWARE_T.DYNAMIC
                     else: # Unknown mode
                         logging.info("Unknown mode [%s]", fields['config']['mode'])
-            except KeyError as  e:
+            except KeyError as e:
                 log_key_err(e)
             fields['node'] = decode_node_id(statsStr, ra)
             logging.info("Contacted local node: %s" % (fields['node']))
@@ -391,7 +391,7 @@ class LeafLine:
             try:
                 fields['statistics']['paxos_principal'] = decode_node_id(fields['statistics']['paxos_principal'], ra)
                 fields['statistics']['cluster_principal'] = decode_node_id(fields['statistics']['cluster_principal'], ra)
-            except KeyError as  e:
+            except KeyError as e:
                 log_key_err(e)
 
         # Namespaces, Bins, and Histograms
@@ -510,10 +510,13 @@ class LeafLine:
             fields['sets'] = sets
 
             # Host System Information
-            distro = platform.linux_distribution()
-            if (distro == ('', '', '')):
-                # Dig deeper for Amazon AMI.
-                distro = platform.linux_distribution(supported_dists=['system'])
+            try:
+                distro = platform.linux_distribution()
+                if (distro == ('', '', '')):
+                    # Dig deeper for Amazon AMI.
+                    distro = platform.linux_distribution(supported_dists=['system'])
+            except:
+                distro = 'unknown'
             system = {'os-name': os.name,
                       'linux_distribution': distro,
                       'platform': sys.platform,

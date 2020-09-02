@@ -42,8 +42,8 @@ if __name__ == "__main__":
     config_filename = args[0]
 
     # Read configuration file.
-    defaults = {'cafile': None, 'email': None, 'fgdaemon': False, 'group': None, 'proxy': None, 'user': None, 'sample': False}
-    config = configparser.SafeConfigParser(defaults = defaults)
+    defaults = {'cafile': '', 'email': '', 'fgdaemon': False, 'group': '', 'proxy': '', 'user': '', 'sample': False}
+    config = configparser.ConfigParser(defaults = defaults)
     try:
         with open(config_filename, 'r') as config_fd:
             config.readfp(config_fd)
