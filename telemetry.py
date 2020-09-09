@@ -46,7 +46,10 @@ if __name__ == "__main__":
     config = configparser.ConfigParser(defaults = defaults)
     try:
         with open(config_filename, 'r') as config_fd:
-            config.readfp(config_fd)
+            if "read_file" in dir(config):
+                config.read_file(config_fd)
+            else:
+                config.readfp(config_fd)
     except Exception as ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nCould not parse configuration file [%s] --- [%s]\n" % (config_filename, str(ex)))
@@ -121,7 +124,7 @@ if __name__ == "__main__":
             'group': config.get('main', 'group'),
             'proxy': config.get('main', 'proxy'),
             'user': config.get('main', 'user'),
-            'sample': config.get('main', 'sample')}
+            'sample': config.getboolean('main', 'sample')}
     except configparser.NoOptionError as ex:
         sys.stderr.write(usage_nl)
         sys.stderr.write("\nInvalid configuration file [%s] -- Option not found [%s]\n" % (config_filename, str(ex)))
