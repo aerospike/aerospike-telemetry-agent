@@ -97,6 +97,8 @@ if __name__ == "__main__":
             config.set('main', 'sample', 'true')
             config.set('logging', 'logfile', 'out')
             config.set('logging', 'loglevel', 'info')
+        else:
+            config.set('main', 'sample', 'false')
         if edit_config:
             with open(args[0], 'wb') as cf:
                 config.write(cf)

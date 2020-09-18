@@ -424,7 +424,7 @@ class LeafLine:
                                 if len(item) == 2 and item[0] == "bin_names_quota":
                                     bins[anonymized_ns][item[0]] = item[1]
                     histograms[anonymized_ns] = {}
-                    if LooseVersion(fields['build']) >= LooseVersion("5.2"):
+                    if LooseVersion(fields['build']) >= LooseVersion("5.1"):
                         hist_cmds = ["latencies"]
                     else:
                         hist_cmds = ["latency", "throughput"]

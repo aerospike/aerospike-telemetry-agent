@@ -1587,7 +1587,7 @@ potentially-verbose fields (specifically, `config`, `sets`, `sindex-metadata`,
 	                         'x86_64',
 	                         'x86_64']},
 	  'telemetry-agent-ip-address': '98315ce693114ad9d0229d5d1f59303a',
-	  'telemetry-agent-version': '1.0.11',
+	  'telemetry-agent-version': '1.0.12',
 	  'udfs': { 'num-udf-files': '4'},
 	  'unix-epoch-time': '1575603633',
 	  'version': 'Aerospike Community Edition build 4.7.0.5'}
