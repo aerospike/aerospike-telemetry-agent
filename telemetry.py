@@ -100,7 +100,7 @@ if __name__ == "__main__":
         else:
             config.set('main', 'sample', 'false')
         if edit_config:
-            with open(args[0], 'wb') as cf:
+            with open(args[0], 'w') as cf:
                 config.write(cf)
             sys.stdout.write("Configuration file [%s] successfully changed.\n" % config_filename)
             exit(0)
